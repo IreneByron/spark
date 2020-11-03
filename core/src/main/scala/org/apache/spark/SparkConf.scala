@@ -35,27 +35,35 @@ import org.apache.spark.util.Utils
 
 /**
  * Configuration for a Spark application. Used to set various Spark parameters as key-value pairs.
+ * Spark应用配置。 以key-value对的形式来设置多种Spark参数
  *
  * Most of the time, you would create a SparkConf object with `new SparkConf()`, which will load
  * values from any `spark.*` Java system properties set in your application as well. In this case,
  * parameters you set directly on the `SparkConf` object take priority over system properties.
+ * 大多数时间，你将使用`new SparkConf` 来新建一个SparkConf对象。它将从你应用的Java 系统参数集中加载所有
+ * 带有`spark.*`的值。在这种情况下，你直接在`SparkConf`对象设置的参数将优先于系统参数。
  *
  * For unit tests, you can also call `new SparkConf(false)` to skip loading external settings and
  * get the same configuration no matter what the system properties are.
+ * 对于单元测试，你可以使用`new SparkConf(false)`来跳过加载外部设置，这样无论系统参数是什么，你可以总是得到同样的配置。
  *
  * All setter methods in this class support chaining. For example, you can write
  * `new SparkConf().setMaster("local").setAppName("My app")`.
+ * 在这个类中的所有setter方法支持链式调用。举例
  *
  * @param loadDefaults whether to also load values from Java system properties
+ *                     是否还从Java系统属性中加载值
  *
  * @note Once a SparkConf object is passed to Spark, it is cloned and can no longer be modified
  * by the user. Spark does not support modifying the configuration at runtime.
+ * 注意：一旦一个SparkConf对象被传递给Spark。它将会被复制并且不能再被用户修改。Spark不支持在运行时修改配置。
  */
 class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Serializable {
 
   import SparkConf._
 
   /** Create a SparkConf that loads defaults from system properties and the classpath */
+  /** 创建一个SparkConf,它从系统属性和classpath加载默认值*/
   def this() = this(true)
 
   private val settings = new ConcurrentHashMap[String, String]()
@@ -72,6 +80,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
 
   private[spark] def loadFromSystemProperties(silent: Boolean): SparkConf = {
     // Load any spark.* system properties
+    // 加载所有以 spark. 开头的系统参数
     for ((key, value) <- Utils.getSystemProperties if key.startsWith("spark.")) {
       set(key, value, silent)
     }
@@ -79,6 +88,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
   }
 
   /** Set a configuration variable. */
+    //设置配置
   def set(key: String, value: String): SparkConf = {
     set(key, value, false)
   }

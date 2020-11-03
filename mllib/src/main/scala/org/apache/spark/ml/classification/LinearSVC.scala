@@ -40,15 +40,19 @@ import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 
 /** Params for linear SVM Classifier. */
+//线性SVM分类器的参数
 private[classification] trait LinearSVCParams extends ClassifierParams with HasRegParam
   with HasMaxIter with HasFitIntercept with HasTol with HasStandardization with HasWeightCol
   with HasAggregationDepth with HasThreshold with HasBlockSize {
 
   /**
    * Param for threshold in binary classification prediction.
+   * 二元分类预测阈值的参数
    * For LinearSVC, this threshold is applied to the rawPrediction, rather than a probability.
    * This threshold can be any real number, where Inf will make all predictions 0.0
    * and -Inf will make all predictions 1.0.
+   * 对于LinearSVC，这个阈值被应用于rawPrediction（预测），而不是代表可能性。
+   * 这个值可以是任何实数。 Inf可以预测为0.0，-In可以预测为1.0（其实就是label)。
    * Default: 0.0
    *
    * @group param
@@ -56,6 +60,7 @@ private[classification] trait LinearSVCParams extends ClassifierParams with HasR
   final override val threshold: DoubleParam = new DoubleParam(this, "threshold",
     "threshold in binary classification prediction applied to rawPrediction")
 
+  //设置默认值
   setDefault(regParam -> 0.0, maxIter -> 100, fitIntercept -> true, tol -> 1E-6,
     standardization -> true, threshold -> 0.0, aggregationDepth -> 2, blockSize -> 1)
 }
@@ -66,6 +71,8 @@ private[classification] trait LinearSVCParams extends ClassifierParams with HasR
  *
  * This binary classifier optimizes the Hinge Loss using the OWLQN optimizer.
  * Only supports L2 regularization currently.
+ * 这个二元分类器使用OWLQN优化器来优化Hinge Loss.
+ * 当前仅支持L2正则。
  *
  */
 @Since("2.2.0")
@@ -78,7 +85,7 @@ class LinearSVC @Since("2.2.0") (
   def this() = this(Identifiable.randomUID("linearsvc"))
 
   /**
-   * Set the regularization parameter.
+   * Set the regularization parameter. 正则化参数
    * Default is 0.0.
    *
    * @group setParam
@@ -87,7 +94,7 @@ class LinearSVC @Since("2.2.0") (
   def setRegParam(value: Double): this.type = set(regParam, value)
 
   /**
-   * Set the maximum number of iterations.
+   * Set the maximum number of iterations. 最多迭代次数
    * Default is 100.
    *
    * @group setParam
@@ -96,7 +103,7 @@ class LinearSVC @Since("2.2.0") (
   def setMaxIter(value: Int): this.type = set(maxIter, value)
 
   /**
-   * Whether to fit an intercept term.
+   * Whether to fit an intercept term.  是否 fit 截距项
    * Default is true.
    *
    * @group setParam
@@ -105,7 +112,7 @@ class LinearSVC @Since("2.2.0") (
   def setFitIntercept(value: Boolean): this.type = set(fitIntercept, value)
 
   /**
-   * Set the convergence tolerance of iterations.
+   * Set the convergence tolerance of iterations. 迭代收敛容忍度
    * Smaller values will lead to higher accuracy at the cost of more iterations.
    * Default is 1E-6.
    *
@@ -116,6 +123,7 @@ class LinearSVC @Since("2.2.0") (
 
   /**
    * Whether to standardize the training features before fitting the model.
+   * 在训练模型前是否对训练特征进行标准化
    * Default is true.
    *
    * @group setParam
@@ -124,8 +132,8 @@ class LinearSVC @Since("2.2.0") (
   def setStandardization(value: Boolean): this.type = set(standardization, value)
 
   /**
-   * Set the value of param [[weightCol]].
-   * If this is not set or empty, we treat all instance weights as 1.0.
+   * Set the value of param [[weightCol]].  权重
+   * If this is not set or empty, we treat all instance weights as 1.0. 默认1.0
    * Default is not set, so all instances have weight one.
    *
    * @group setParam
@@ -174,6 +182,7 @@ class LinearSVC @Since("2.2.0") (
   override def copy(extra: ParamMap): LinearSVC = defaultCopy(extra)
 
   override protected def train(dataset: Dataset[_]): LinearSVCModel = instrumented { instr =>
+    //日志
     instr.logPipelineStage(this)
     instr.logDataset(dataset)
     instr.logParams(this, labelCol, weightCol, featuresCol, predictionCol, rawPredictionCol,
