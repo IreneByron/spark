@@ -21,6 +21,7 @@ import org.apache.spark.storage.StorageLevel;
 
 /**
  * Expose some commonly useful storage level constants.
+ * 常用storage级别常量
  */
 public class StorageLevels {
   public static final StorageLevel NONE = create(false, false, false, false, 1);

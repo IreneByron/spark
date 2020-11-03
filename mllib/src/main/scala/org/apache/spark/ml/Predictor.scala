@@ -67,6 +67,7 @@ private[ml] trait PredictorParams extends Params
   /**
    * Extract [[labelCol]], weightCol(if any) and [[featuresCol]] from the given dataset,
    * and put it in an RDD with strong types.
+   * 从给定的数据集提取 labelCol,weightCol,featuresCol，并用强类型存储到RDD
    */
   protected def extractInstances(dataset: Dataset[_]): RDD[Instance] = {
     val w = this match {

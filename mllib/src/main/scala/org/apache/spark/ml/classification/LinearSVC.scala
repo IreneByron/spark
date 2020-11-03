@@ -188,10 +188,12 @@ class LinearSVC @Since("2.2.0") (
     instr.logParams(this, labelCol, weightCol, featuresCol, predictionCol, rawPredictionCol,
       regParam, maxIter, fitIntercept, tol, standardization, threshold, aggregationDepth, blockSize)
 
+    //提取数据，存到rdd
     val instances = extractInstances(dataset)
       .setName("training instances")
 
     if (dataset.storageLevel == StorageLevel.NONE && $(blockSize) == 1) {
+      //rdd 使用memory和desk
       instances.persist(StorageLevel.MEMORY_AND_DISK)
     }
 

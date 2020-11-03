@@ -189,6 +189,9 @@ abstract class RDD[T: ClassTag](
    * Set this RDD's storage level to persist its values across operations after the first time
    * it is computed. This can only be used to assign a new storage level if the RDD does not
    * have a storage level set yet. Local checkpointing is an exception.
+   * 设置此RDD的存储级别，以在首次计算它之后在所有操作中持久保存其值。
+   * 只能用于未设置存储级别的RDD 来分配新的存储级别。
+   * Local checkpointing是例外。
    */
   def persist(newLevel: StorageLevel): this.type = {
     if (isLocallyCheckpointed) {
