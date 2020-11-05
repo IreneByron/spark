@@ -224,6 +224,7 @@ object Summarizer extends Logging {
   }
 
   /** Get classification feature and label summarizers for provided data. */
+    //从提供的数据获得分类特征和标签的总结
   private[spark] def getClassificationSummarizers(
       instances: RDD[Instance],
       aggregationDepth: Int = 2,

@@ -181,6 +181,7 @@ class LinearSVC @Since("2.2.0") (
   @Since("2.2.0")
   override def copy(extra: ParamMap): LinearSVC = defaultCopy(extra)
 
+  //训练
   override protected def train(dataset: Dataset[_]): LinearSVCModel = instrumented { instr =>
     //日志
     instr.logPipelineStage(this)
@@ -202,10 +203,14 @@ class LinearSVC @Since("2.2.0") (
     val (summarizer, labelSummarizer) = Summarizer
       .getClassificationSummarizers(instances, $(aggregationDepth), requestedMetrics)
 
+    //直方图，柱状图
     val histogram = labelSummarizer.histogram
+    //不合法数据个数
     val numInvalid = labelSummarizer.countInvalid
+    //特征维度
     val numFeatures = summarizer.mean.size
 
+    //日志
     instr.logNumExamples(summarizer.count)
     instr.logNamedValue("lowestLabelWeight", labelSummarizer.histogram.min.toString)
     instr.logNamedValue("highestLabelWeight", labelSummarizer.histogram.max.toString)
@@ -227,11 +232,14 @@ class LinearSVC @Since("2.2.0") (
         n
       case None => histogram.length
     }
+
+    //只支持二分类
     require(numClasses == 2, s"LinearSVC only supports binary classification." +
       s" $numClasses classes detected in $labelCol")
     instr.logNumClasses(numClasses)
     instr.logNumFeatures(numFeatures)
 
+    //有不合法的数据，抛出异常
     if (numInvalid != 0) {
       val msg = s"Classification labels should be in [0 to ${numClasses - 1}]. " +
         s"Found $numInvalid invalid labels."
