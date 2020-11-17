@@ -757,7 +757,7 @@ trait Params extends Identifiable with Serializable {
   }
 
   /**
-   * An alias for `getOrDefault()`.
+   * An alias for `getOrDefault()`.  getOrDefault别名
    */
   protected final def $[T](param: Param[T]): T = getOrDefault(param)
 

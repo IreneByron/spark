@@ -40,7 +40,7 @@ import org.apache.spark.sql._
 import org.apache.spark.storage.StorageLevel
 
 /** Params for linear SVM Classifier. */
-//线性SVM分类器的参数
+// 定义trait 线性SVM分类器的参数
 private[classification] trait LinearSVCParams extends ClassifierParams with HasRegParam
   with HasMaxIter with HasFitIntercept with HasTol with HasStandardization with HasWeightCol
   with HasAggregationDepth with HasThreshold with HasBlockSize {
@@ -60,7 +60,7 @@ private[classification] trait LinearSVCParams extends ClassifierParams with HasR
   final override val threshold: DoubleParam = new DoubleParam(this, "threshold",
     "threshold in binary classification prediction applied to rawPrediction")
 
-  //设置默认值
+  // 设置默认值
   setDefault(regParam -> 0.0, maxIter -> 100, fitIntercept -> true, tol -> 1E-6,
     standardization -> true, threshold -> 0.0, aggregationDepth -> 2, blockSize -> 1)
 }
@@ -183,18 +183,18 @@ class LinearSVC @Since("2.2.0") (
 
   //训练
   override protected def train(dataset: Dataset[_]): LinearSVCModel = instrumented { instr =>
-    //日志
+    // 日志
     instr.logPipelineStage(this)
     instr.logDataset(dataset)
     instr.logParams(this, labelCol, weightCol, featuresCol, predictionCol, rawPredictionCol,
       regParam, maxIter, fitIntercept, tol, standardization, threshold, aggregationDepth, blockSize)
 
-    //提取数据，存到rdd
+    // 提取数据，返回rdd  instance{label,weight,features}
     val instances = extractInstances(dataset)
       .setName("training instances")
 
     if (dataset.storageLevel == StorageLevel.NONE && $(blockSize) == 1) {
-      //rdd 使用memory和desk
+      // rdd 使用memory和desk
       instances.persist(StorageLevel.MEMORY_AND_DISK)
     }
 
@@ -203,14 +203,14 @@ class LinearSVC @Since("2.2.0") (
     val (summarizer, labelSummarizer) = Summarizer
       .getClassificationSummarizers(instances, $(aggregationDepth), requestedMetrics)
 
-    //直方图，柱状图
+    // 直方图，柱状图
     val histogram = labelSummarizer.histogram
-    //不合法数据个数
+    // 不合法数据个数
     val numInvalid = labelSummarizer.countInvalid
-    //特征维度
+    // 特征维度
     val numFeatures = summarizer.mean.size
 
-    //日志
+    // 日志
     instr.logNumExamples(summarizer.count)
     instr.logNamedValue("lowestLabelWeight", labelSummarizer.histogram.min.toString)
     instr.logNamedValue("highestLabelWeight", labelSummarizer.histogram.max.toString)
@@ -233,13 +233,13 @@ class LinearSVC @Since("2.2.0") (
       case None => histogram.length
     }
 
-    //只支持二分类
+    // 只支持二分类
     require(numClasses == 2, s"LinearSVC only supports binary classification." +
       s" $numClasses classes detected in $labelCol")
     instr.logNumClasses(numClasses)
     instr.logNumFeatures(numFeatures)
 
-    //有不合法的数据，抛出异常
+    // 有不合法的数据，抛出异常
     if (numInvalid != 0) {
       val msg = s"Classification labels should be in [0 to ${numClasses - 1}]. " +
         s"Found $numInvalid invalid labels."
@@ -247,22 +247,26 @@ class LinearSVC @Since("2.2.0") (
       throw new SparkException(msg)
     }
 
-    val featuresStd = summarizer.std.toArray
+    val featuresStd = summarizer.std.toArray //每个特征值的标准差
     val getFeaturesStd = (j: Int) => featuresStd(j)
     val regularization = if ($(regParam) != 0.0) {
       val shouldApply = (idx: Int) => idx >= 0 && idx < numFeatures
+      // L2正则
       Some(new L2Regularization($(regParam), shouldApply,
         if ($(standardization)) None else Some(getFeaturesStd)))
     } else None
 
     def regParamL1Fun = (index: Int) => 0.0
+    // 优化器
     val optimizer = new BreezeOWLQN[Int, BDV[Double]]($(maxIter), 10, regParamL1Fun, $(tol))
 
     /*
        The coefficients are trained in the scaled space; we're converting them back to
        the original space.
+       coefficients系数在缩放空间中训练；我们将它们转换回原始空间
        Note that the intercept in scaled space and original space is the same;
        as a result, no scaling is needed.
+       注意intercept在原始空间和缩放空间一样，不需要缩放
      */
     val (rawCoefficients, objectiveHistory) = if ($(blockSize) == 1) {
       trainOnRows(instances, featuresStd, regularization, optimizer)
@@ -304,11 +308,13 @@ class LinearSVC @Since("2.2.0") (
   }
 
   private def trainOnRows(
-      instances: RDD[Instance],
+      instances: RDD[Instance], //数据
       featuresStd: Array[Double],
       regularization: Option[L2Regularization],
       optimizer: BreezeOWLQN[Int, BDV[Double]]): (Array[Double], Array[Double]) = {
+    //特征数量
     val numFeatures = featuresStd.length
+    //截距
     val numFeaturesPlusIntercept = if ($(fitIntercept)) numFeatures + 1 else numFeatures
 
     val bcFeaturesStd = instances.context.broadcast(featuresStd)

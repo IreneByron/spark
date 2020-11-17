@@ -90,11 +90,11 @@ object Summarizer extends Logging {
    * See the documentation of [[Summarizer]] for an example.
    *
    * The following metrics are accepted (case sensitive):
-   *  - mean: a vector that contains the coefficient-wise mean.
-   *  - sum: a vector that contains the coefficient-wise sum.
-   *  - variance: a vector tha contains the coefficient-wise variance.
-   *  - std: a vector tha contains the coefficient-wise standard deviation.
-   *  - count: the count of all vectors seen.
+   *  - mean: a vector that contains the coefficient-wise mean. 平均值
+   *  - sum: a vector that contains the coefficient-wise sum. 总和
+   *  - variance: a vector tha contains the coefficient-wise variance. 协方差
+   *  - std: a vector tha contains the coefficient-wise standard deviation. 标准差
+   *  - count: the count of all vectors seen. 计数
    *  - numNonzeros: a vector with the number of non-zeros for each coefficients
    *  - max: the maximum for each coefficient.
    *  - min: the minimum for each coefficient.
@@ -654,17 +654,20 @@ private[spark] class SummarizerBuffer(
 
   /**
    * Unbiased estimate of standard deviation of each dimension.
+   * 每个维度的标准偏差的无偏估计。
    */
   def std: Vector = {
     require(requestedMetrics.contains(Std))
     require(totalWeightSum > 0, s"Nothing has been added to this summarizer.")
 
+    //实方差
     val realVariance = computeVariance
     Vectors.dense(realVariance.map(math.sqrt))
   }
 
   private def computeVariance: Array[Double] = {
     val realVariance = Array.ofDim[Double](n)
+    //denominator 分母
     val denominator = totalWeightSum - (weightSquareSum / totalWeightSum)
 
     // Sample variance is computed, if the denominator is less than 0, the variance is just 0.

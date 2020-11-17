@@ -24,11 +24,14 @@ import org.apache.spark.ml.linalg._
 /**
  * HingeAggregator computes the gradient and loss for Hinge loss function as used in
  * binary classification for instances in sparse or dense vector in an online fashion.
+ * HingeAggregator为二分类中（稀疏或稠密实例）使用的Hinge loss 函数计算梯度和损失，
  *
  * Two HingeAggregators can be merged together to have a summary of loss and gradient of
  * the corresponding joint dataset.
+ * 两个HingeAgrregators可以被合并来得到相应联合数据集的loss和梯度总和
  *
  * This class standardizes feature values during computation using bcFeaturesStd.
+ * 在计算过程中使用bcFeaturesStd 来标准化特征值
  *
  * @param bcCoefficients The coefficients corresponding to the features.
  * @param fitIntercept Whether to fit an intercept term.
@@ -62,7 +65,9 @@ private[ml] class HingeAggregator(
       require(weight >= 0.0, s"instance weight, $weight has to be >= 0.0")
 
       if (weight == 0.0) return this
+      //标准差
       val localFeaturesStd = bcFeaturesStd.value
+      // 当前w
       val localCoefficients = coefficientsArray
       val localGradientSumArray = gradientSumArray
 

@@ -174,6 +174,7 @@ private[spark] class Instrumentation private () extends Logging with MLEvents {
 
 /**
  * Some common methods for logging information about a training session.
+ * 训练session日志信息
  */
 private[spark] object Instrumentation {
 

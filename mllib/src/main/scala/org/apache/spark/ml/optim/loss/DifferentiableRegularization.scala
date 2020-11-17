@@ -36,16 +36,20 @@ private[ml] trait DifferentiableRegularization[T] extends DiffFunction[T] {
 /**
  * A Breeze diff function for computing the L2 regularized loss and gradient of a vector of
  * coefficients.
+ * Breeze diff函数，为计算L2正则损失和向量coefficients的梯度
  *
- * @param regParam The magnitude of the regularization.
+ * @param regParam The magnitude of the regularization.  正则的maginitude(量，模)
  * @param shouldApply A function (Int => Boolean) indicating whether a given index should have
  *                    regularization applied to it. Usually we don't apply regularization to
- *                    the intercept.
+ *                    the intercept. 判断给定的index是否需要应用正则，通常截距不需要正则
  * @param applyFeaturesStd Option for a function which maps coefficient index (column major) to the
  *                         feature standard deviation. Since we always standardize the data during
  *                         training, if `standardization` is false, we have to reverse
  *                         standardization by penalizing each component differently by this param.
  *                         If `standardization` is true, this should be `None`.
+ *                         coefficient标准化选项，通常在训练过程中进行标准化，
+ *                         如果standardization是false，我们就需要通过使用param以不同程度惩罚component来反向标准化
+ *
  */
 private[ml] class L2Regularization(
     override val regParam: Double,
