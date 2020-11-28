@@ -85,7 +85,9 @@ class PCA @Since("1.5.0") (
    */
   @Since("2.0.0")
   override def fit(dataset: Dataset[_]): PCAModel = {
+    // 校验
     transformSchema(dataset.schema, logging = true)
+    // 向量转换  dense,sparse
     val input = dataset.select($(inputCol)).rdd.map {
       case Row(v: Vector) => OldVectors.fromML(v)
     }

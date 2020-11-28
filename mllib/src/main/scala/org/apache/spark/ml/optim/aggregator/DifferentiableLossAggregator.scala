@@ -39,7 +39,9 @@ private[ml] trait DifferentiableLossAggregator[
   /** The dimension of the gradient array. */
   protected val dim: Int
 
-  /** Array of gradient values that are mutated when new instances are added to the aggregator. */
+  /** Array of gradient values that are mutated when new instances are added to the aggregator.
+   * 当新实例添加到聚合器时，渐变值的数组会发生突变。
+   * */
   protected lazy val gradientSumArray: Array[Double] = Array.ofDim[Double](dim)
 
   /** Add a single data point to this aggregator. */

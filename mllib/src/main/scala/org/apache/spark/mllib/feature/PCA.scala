@@ -31,6 +31,7 @@ import org.apache.spark.rdd.RDD
  */
 @Since("1.4.0")
 class PCA @Since("1.4.0") (@Since("1.4.0") val k: Int) {
+  // 主成分数量，校验值
   require(k > 0,
     s"Number of principal components must be positive but got ${k}")
 

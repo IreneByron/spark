@@ -449,8 +449,11 @@ class RowMatrix @Since("1.0.0") (
   /**
    * Computes the top k principal components and a vector of proportions of
    * variance explained by each principal component.
+   * 计算前k个主要成分和每个主要成分解释的方差比例向量。
    * Rows correspond to observations and columns correspond to variables.
+   * 行对应于观测值，列对应于变量。
    * The principal components are stored a local matrix of size n-by-k.
+   * 主成分存储在大小为n×k的局部矩阵中。
    * Each column corresponds for one principal component,
    * and the columns are in descending order of component variance.
    * The row data do not need to be "centered" first; it is not necessary for
