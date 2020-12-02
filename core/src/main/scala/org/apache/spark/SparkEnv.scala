@@ -53,6 +53,11 @@ import org.apache.spark.util.{RpcUtils, Utils}
  * including the serializer, RpcEnv, block manager, map output tracker, etc. Currently
  * Spark code finds the SparkEnv through a global variable, so all the threads can access the same
  * SparkEnv. It can be accessed by SparkEnv.get (e.g. after creating a SparkContext).
+ * 保存正在运行的Spark实例（主实例或工作实例）的所有运行时环境对象，
+ * 包括serializer,RpcEnv,block manager,map output tracker,etc.
+ * 当前，Spark代码通过全局变量查找SparkEnv，
+ * 因此所有线程都可以访问相同的SparkEnv。
+ * 可以通过SparkEnv.get访问它（例如，在创建SparkContext之后）。
  */
 @DeveloperApi
 class SparkEnv (
@@ -76,6 +81,8 @@ class SparkEnv (
 
   // A general, soft-reference map for metadata needed during HadoopRDD split computation
   // (e.g., HadoopFileRDD uses this to cache JobConfs and InputFormats).
+  // HadoopRDD拆分计算期间所需的元数据的通用软引用映射
+  //（例如，HadoopFileRDD使用该映射来缓存JobConfs和InputFormats）。
   private[spark] val hadoopJobMetadata =
     CacheBuilder.newBuilder().softValues().build[String, AnyRef]().asMap()
 

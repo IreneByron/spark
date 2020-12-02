@@ -120,6 +120,8 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
   /**
    * The master URL to connect to, such as "local" to run locally with one thread, "local[4]" to
    * run locally with 4 cores, or "spark://master:7077" to run on a Spark standalone cluster.
+   * 连接的master URL，例如"local"指使用一个线程本地运行，local[4]指使用4个核本地运行，或者使用
+   * "spark://master:7077"来运行在一个单独的Spark集群。
    */
   def setMaster(master: String): SparkConf = {
     set("spark.master", master)
@@ -143,7 +145,9 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
 
   /**
    * Set an environment variable to be used when launching executors for this application.
+   * 当要为这个程序启动executors，设置环境变量
    * These variables are stored as properties of the form spark.executorEnv.VAR_NAME
+   * 这些变量以spark.executorEnv.VAR_NAME的形式被储存为属性
    * (for example spark.executorEnv.PATH) but this method makes them easier to set.
    */
   def setExecutorEnv(variable: String, value: String): SparkConf = {
@@ -152,6 +156,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
 
   /**
    * Set multiple environment variables to be used when launching executors.
+   * 设置多个环境变量
    * These variables are stored as properties of the form spark.executorEnv.VAR_NAME
    * (for example spark.executorEnv.PATH) but this method makes them easier to set.
    */
@@ -172,18 +177,23 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
 
   /**
    * Set the location where Spark is installed on worker nodes.
+   * 设置工作节点上Spark的安装位置。
    */
   def setSparkHome(home: String): SparkConf = {
     set("spark.home", home)
   }
 
-  /** Set multiple parameters together */
+  /** Set multiple parameters together
+   * 一起设置多个参数
+   * */
   def setAll(settings: Iterable[(String, String)]): SparkConf = {
     settings.foreach { case (k, v) => set(k, v) }
     this
   }
 
-  /** Set a parameter if it isn't already configured */
+  /** Set a parameter if it isn't already configured
+   * 设置参数（如果尚未配置）
+   * */
   def setIfMissing(key: String, value: String): SparkConf = {
     if (settings.putIfAbsent(key, value) == null) {
       logDeprecationWarning(key)
@@ -207,7 +217,9 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
 
   /**
    * Use Kryo serialization and register the given set of classes with Kryo.
+   * 使用Kryo序列化并向Kryo注册给定的类集。
    * If called multiple times, this will append the classes from all calls together.
+   * 如果多次调用，这会将所有调用的类附加在一起。
    */
   def registerKryoClasses(classes: Array[Class[_]]): SparkConf = {
     val allClassNames = new LinkedHashSet[String]()
@@ -240,7 +252,9 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
       .toMap
   }
 
-  /** Remove a parameter from the configuration */
+  /** Remove a parameter from the configuration
+   * 移除参数
+   * */
   def remove(key: String): SparkConf = {
     settings.remove(key)
     this
@@ -250,20 +264,25 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
     remove(entry.key)
   }
 
-  /** Get a parameter; throws a NoSuchElementException if it's not set */
+  /** Get a parameter; throws a NoSuchElementException if it's not set
+   * 获取参数，如果没有设置，则抛出异常NoSuchElementException
+   * */
   def get(key: String): String = {
     getOption(key).getOrElse(throw new NoSuchElementException(key))
   }
 
-  /** Get a parameter, falling back to a default if not set */
+  /** Get a parameter, falling back to a default if not set
+   * 获取参数，没设置就fall back to默认值
+   * */
   def get(key: String, defaultValue: String): String = {
     getOption(key).getOrElse(defaultValue)
   }
 
   /**
    * Retrieves the value of a pre-defined configuration entry.
+   * 检索预定义配置条目的值。
    *
-   * - This is an internal Spark API.
+   * - This is an internal Spark API. 内部API
    * - The return type if defined by the configuration entry.
    * - This will throw an exception is the config is not optional and the value is not set.
    */
@@ -654,6 +673,7 @@ private[spark] object SparkConf extends Logging {
 
   /**
    * Maps a current config key to alternate keys that were used in previous version of Spark.
+   * 将当前配置键映射到以前版本的Spark中使用的备用键。
    *
    * The alternates are used in the order defined in this map. If deprecated configs are
    * present in the user's configuration, a warning is logged.
@@ -801,6 +821,7 @@ private[spark] object SparkConf extends Logging {
 
   /**
    * Holds information about keys that have been deprecated and do not have a replacement.
+   * 已废弃参数
    *
    * @param key The deprecated key.
    * @param version Version of Spark where key was deprecated.
