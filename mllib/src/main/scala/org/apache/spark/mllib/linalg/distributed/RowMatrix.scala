@@ -108,6 +108,7 @@ class RowMatrix @Since("1.0.0") (
 
   /**
    * Computes the Gramian matrix `A^T A`.
+   * 计算Gramian矩阵“ A ^ TA”。
    *
    * @note This cannot be computed on matrices with more than 65535 columns.
    */
@@ -244,45 +245,74 @@ class RowMatrix @Since("1.0.0") (
    * Computes singular value decomposition of this matrix. Denote this matrix by A (m x n). This
    * will compute matrices U, S, V such that A ~= U * S * V', where S contains the leading k
    * singular values, U and V contain the corresponding singular vectors.
+   * 计算此矩阵的奇异值分解。用A（m x n）表示该矩阵。这将计算矩阵U，S，V，
+   * 使得A〜= U * S * V'，其中S包含前导k个奇异值，U和V包含相应的奇异矢量。
    *
    * At most k largest non-zero singular values and associated vectors are returned. If there are k
    * such values, then the dimensions of the return will be:
    *  - U is a RowMatrix of size m x k that satisfies U' * U = eye(k),
    *  - s is a Vector of size k, holding the singular values in descending order,
    *  - V is a Matrix of size n x k that satisfies V' * V = eye(k).
+   *  最多返回k个最大的非零奇异值和关联的矢量。如果有k个这样的值，则返回的维数将为：
+   *  -U是大小为m x k的RowMatrix，它满足U'* U = eye（k），
+   *  -s是大小为k的向量，以降序保存奇异值，
+   *  V是大小为n x k的矩阵，满足V'* V = eye（k）。
    *
    * We assume n is smaller than m, though this is not strictly required.
+   * 我们假定n小于m，尽管这不是严格要求的。
+   *
    * The singular values and the right singular vectors are derived
    * from the eigenvalues and the eigenvectors of the Gramian matrix A' * A. U, the matrix
    * storing the right singular vectors, is computed via matrix multiplication as
    * U = A * (V * S^-1^), if requested by user. The actual method to use is determined
    * automatically based on the cost:
+   * 奇异值和右奇异矢量是从Gramian矩阵A'* A的特征值eigenvalues和特征向量中eigenvectors得出的。
+   * 如果用户要求，则通过矩阵乘法以U = A *（V * S ^ -1 ^）的形式计算存储右奇异矢量的矩阵U。
+   * 实际使用的方法是根据成本自动确定的：
+   *
    *  - If n is small (n &lt; 100) or k is large compared with n (k &gt; n / 2), we compute
    *    the Gramian matrix first and then compute its top eigenvalues and eigenvectors locally
    *    on the driver. This requires a single pass with O(n^2^) storage on each executor and
    *    on the driver, and O(n^2^ k) time on the driver.
+   *    如果n较小（n <100）或k与n相比较大（k> n / 2），
+   *    我们首先计算Gramian矩阵，然后在驱动程序上局部计算其最高特征值和特征向量。
+   *    这需要在每个执行器和驱动程序上进行一次O（n^2^）存储，并在驱动程序上进行O（n^2^ k）时间。
+   *
    *  - Otherwise, we compute (A' * A) * v in a distributive way and send it to ARPACK's DSAUPD to
    *    compute (A' * A)'s top eigenvalues and eigenvectors on the driver node. This requires O(k)
    *    passes, O(n) storage on each executor, and O(n k) storage on the driver.
+   *    否则，我们将以分布方式计算（A'* A）* v，并将其发送到ARPACK的DSAUPD，
+   *    以计算驱动程序节点上（A'* A）的最高特征值和特征向量。
+   *    这需要O（k）次传递，每个执行程序上的O（n）存储以及驱动程序上的O（n k）存储。
    *
    * Several internal parameters are set to default values. The reciprocal condition number rCond
    * is set to 1e-9. All singular values smaller than rCond * sigma(0) are treated as zeros, where
    * sigma(0) is the largest singular value. The maximum number of Arnoldi update iterations for
    * ARPACK is set to 300 or k * 3, whichever is larger. The numerical tolerance for ARPACK's
    * eigen-decomposition is set to 1e-10.
+   * 几个内部参数设置为默认值。
+   * 相互条件编号rCond设置为1e-9。
+   * 所有小于rCond * sigma（0）的奇异值都被视为零，其中sigma（0）是最大的奇异值。
+   * ARPACK的Arnoldi更新迭代的最大次数设置为300或k * 3，以较大者为准。
+   * ARPACK本征分解的数值容差设置为1e-10。
    *
    * @param k number of leading singular values to keep (0 &lt; k &lt;= n).
    *          It might return less than k if
    *          there are numerically zero singular values or there are not enough Ritz values
    *          converged before the maximum number of Arnoldi update iterations is reached (in case
    *          that matrix A is ill-conditioned).
+   *          要保持的前导奇异值的数量（0＆lt; k＆lt; = n）。
+   *          如果在数值上为零的奇异值或在达到最大Arnoldi更新迭代次数之前（如果矩阵A处于病态），
+   *          没有足够的Ritz值收敛，则它可能返回小于k的值。
    * @param computeU whether to compute U
+   *                 是否计算U
    * @param rCond the reciprocal condition number. All singular values smaller than rCond * sigma(0)
    *              are treated as zero, where sigma(0) is the largest singular value.
+   *              reciprocal（倒数）条件编号。所有小于rCond * sigma（0）的奇异值都被视为零，其中sigma（0）是最大的奇异值。
    * @return SingularValueDecomposition(U, s, V). U = null if computeU = false.
-   *
    * @note The conditions that decide which method to use internally and the default parameters are
    * subject to change.
+   * 决定内部使用哪种方法的条件和默认参数可能会发生变化。
    */
   @Since("1.0.0")
   def computeSVD(
@@ -298,6 +328,7 @@ class RowMatrix @Since("1.0.0") (
 
   /**
    * The actual SVD implementation, visible for testing.
+   * 实际的SVD实施，对于测试可见。
    *
    * @param k number of leading singular values to keep (0 &lt; k &lt;= n)
    * @param computeU whether to compute U
@@ -308,6 +339,9 @@ class RowMatrix @Since("1.0.0") (
    *             local-svd: compute gram matrix and computes its full SVD locally,
    *             local-eigs: compute gram matrix and computes its top eigenvalues locally,
    *             dist-eigs: compute the top eigenvalues of the gram matrix distributively)
+   *             local-svd：计算gram矩阵并在本地计算其完整的SVD，
+   *             local-eigs：计算gram矩阵并在本地计算其最高特征值，
+   *             dist-eigs：分布式计算gram矩阵的顶部特征值）
    * @return SingularValueDecomposition(U, s, V). U = null if computeU = false.
    */
   private[mllib] def computeSVD(
@@ -455,15 +489,19 @@ class RowMatrix @Since("1.0.0") (
    * The principal components are stored a local matrix of size n-by-k.
    * 主成分存储在大小为n×k的局部矩阵中。
    * Each column corresponds for one principal component,
+   * 每列对应一个主要成分，
    * and the columns are in descending order of component variance.
+   * 并且这些列按成分差异的降序排列。
    * The row data do not need to be "centered" first; it is not necessary for
    * the mean of each column to be 0. But, if the number of columns are more than
    * 65535, then the data need to be "centered".
+   * 行数据不需要先“居中”；每列的平均值不必为0。但是，如果列数大于65535，则数据需要“居中”。
    *
-   * @param k number of top principal components.
+   * @param k number of top principal components. top主要组成部分的数量。
    * @return a matrix of size n-by-k, whose columns are principal components, and
    * a vector of values which indicate how much variance each principal component
    * explains
+   * 一个n×k大小的矩阵，其列为主要成分，以及一个值向量，这些值指示每个主要成分解释了多少方差
    */
   @Since("1.6.0")
   def computePrincipalComponentsAndExplainedVariance(k: Int): (Matrix, Vector) = {
@@ -471,6 +509,7 @@ class RowMatrix @Since("1.0.0") (
     require(k > 0 && k <= n, s"k = $k out of range (0, n = $n]")
 
     if (n > 65535) {
+      // USV
       val svd = computeSVD(k)
       val s = svd.s.toArray.map(eigValue => eigValue * eigValue / (n - 1))
       val eigenSum = s.sum
