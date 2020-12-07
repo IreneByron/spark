@@ -384,9 +384,6 @@ case class MyParser(spark: SparkSession, delegate: ParserInterface) extends Pars
 
   override def parseDataType(sqlText: String): DataType =
     delegate.parseDataType(sqlText)
-
-  override def parseRawDataType(sqlText: String): DataType =
-    delegate.parseRawDataType(sqlText)
 }
 
 object MyExtensions {
@@ -573,8 +570,9 @@ class ColumnarBoundReference(ordinal: Int, dataType: DataType, nullable: Boolean
 class ColumnarAlias(child: ColumnarExpression, name: String)(
     override val exprId: ExprId = NamedExpression.newExprId,
     override val qualifier: Seq[String] = Seq.empty,
-    override val explicitMetadata: Option[Metadata] = None)
-  extends Alias(child, name)(exprId, qualifier, explicitMetadata)
+    override val explicitMetadata: Option[Metadata] = None,
+    override val deniedMetadataKeys: Seq[String] = Seq.empty)
+  extends Alias(child, name)(exprId, qualifier, explicitMetadata, deniedMetadataKeys)
   with ColumnarExpression {
 
   override def columnarEval(batch: ColumnarBatch): Any = child.columnarEval(batch)
@@ -711,7 +709,7 @@ case class PreRuleReplaceAddWithBrokenVersion() extends Rule[SparkPlan] {
   def replaceWithColumnarExpression(exp: Expression): ColumnarExpression = exp match {
     case a: Alias =>
       new ColumnarAlias(replaceWithColumnarExpression(a.child),
-        a.name)(a.exprId, a.qualifier, a.explicitMetadata)
+        a.name)(a.exprId, a.qualifier, a.explicitMetadata, a.deniedMetadataKeys)
     case att: AttributeReference =>
       new ColumnarAttributeReference(att.name, att.dataType, att.nullable,
         att.metadata)(att.exprId, att.qualifier)
