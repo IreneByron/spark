@@ -91,11 +91,13 @@ class SparkContext(config: SparkConf) extends Logging {
 
   if (!config.get(EXECUTOR_ALLOW_SPARK_CONTEXT)) {
     // In order to prevent SparkContext from being created in executors.
+    // 防止SparkContext被创建在executors中
     SparkContext.assertOnDriver()
   }
 
   // In order to prevent multiple SparkContexts from being active at the same time, mark this
   // context as having started construction.
+  // 为了防止多个SparkContexts同时被激活，标志这个context已经启动构建
   // NOTE: this must be placed at the beginning of the SparkContext constructor.
   SparkContext.markPartiallyConstructed(this)
 
@@ -128,11 +130,13 @@ class SparkContext(config: SparkConf) extends Logging {
   /**
    * Create a SparkContext that loads settings from system properties (for instance, when
    * launching with ./bin/spark-submit).
+   * 加载配置
    */
   def this() = this(new SparkConf())
 
   /**
    * Alternative constructor that allows setting common Spark properties directly
+   * 允许直接设置常见Spark属性的替代构造函数
    *
    * @param master Cluster URL to connect to (e.g. mesos://host:port, spark://host:port, local[4]).
    * @param appName A name for your application, to display on the cluster web UI
@@ -203,7 +207,10 @@ class SparkContext(config: SparkConf) extends Logging {
    | of them to some neutral value ahead of time, so that calling "stop()" while the       |
    | constructor is still running is safe.                                                 |
    * ------------------------------------------------------------------------------------- */
-
+  //私有变量。这些变量保留上下文的内部状态，并且外界无法访问。
+  // 它们是可变的，因为我们希望提前将它们初始化为某个中性值，
+  // 因此在构造函数仍在运行时调用“ stop（）”是安全的。
+  
   private var _conf: SparkConf = _
   private var _eventLogDir: Option[URI] = None
   private var _eventLogCodec: Option[String] = None
@@ -2719,6 +2726,10 @@ object SparkContext extends Logging {
    * thread is constructing a SparkContext. This warning is necessary because the current locking
    * scheme prevents us from reliably distinguishing between cases where another context is being
    * constructed and cases where another constructor threw an exception.
+   * 在SparkContext构造函数的开头调用，以确保没有运行SparkContext。
+   * 如果检测到正在运行的上下文，则引发异常；
+   * 如果另一个线程正在构造SparkContext，则引发警告。
+   * 该警告是必要的，因为当前的锁定方案使我们无法可靠地区分正在构造另一个上下文的情况和另一个构造函数引发异常的情况。
    */
   private[spark] def markPartiallyConstructed(sc: SparkContext): Unit = {
     SPARK_CONTEXT_CONSTRUCTOR_LOCK.synchronized {

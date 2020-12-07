@@ -63,7 +63,7 @@ class SparkConf(loadDefaults: Boolean) extends Cloneable with Logging with Seria
   import SparkConf._
 
   /** Create a SparkConf that loads defaults from system properties and the classpath */
-  /** 创建一个SparkConf,它从系统属性和classpath加载默认值*/
+  /** 创建一个SparkConf,它从系统属性和classpath加载默认值 */
   def this() = this(true)
 
   private val settings = new ConcurrentHashMap[String, String]()

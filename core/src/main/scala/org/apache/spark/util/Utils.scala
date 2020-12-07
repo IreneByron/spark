@@ -1533,6 +1533,9 @@ private[spark] object Utils extends Logging {
     // package. We track the last (shallowest) contiguous Spark method. This might be an RDD
     // transformation, a SparkContext function (such as parallelize), or anything else that leads
     // to instantiation of an RDD. We also track the first (deepest) user method, file, and line.
+    // 持续跟踪堆栈，直到找到第一个函数不在spark包内。
+    // 我们跟踪最后一个（最浅的）连续Spark方法。
+    // 这可能是RDD转换，SparkContext函数（例如并行化）或其他导致
     var lastSparkMethod = "<unknown>"
     var firstUserFile = "<unknown>"
     var firstUserLine = 0
