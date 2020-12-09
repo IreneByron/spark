@@ -207,7 +207,7 @@ class SparkContext(config: SparkConf) extends Logging {
    | of them to some neutral value ahead of time, so that calling "stop()" while the       |
    | constructor is still running is safe.                                                 |
    * ------------------------------------------------------------------------------------- */
-  //私有变量。这些变量保留上下文的内部状态，并且外界无法访问。
+  // 私有变量。这些变量保留上下文的内部状态，并且外界无法访问。
   // 它们是可变的，因为我们希望提前将它们初始化为某个中性值，
   // 因此在构造函数仍在运行时调用“ stop（）”是安全的。
   
@@ -248,11 +248,12 @@ class SparkContext(config: SparkConf) extends Logging {
    | context.                                                                              |
    * ------------------------------------------------------------------------------------- */
 
+  // 访问者和公共区域，提供访问内部context状态的途径
   private[spark] def conf: SparkConf = _conf
 
   /**
    * Return a copy of this SparkContext's configuration. The configuration ''cannot'' be
-   * changed at runtime.
+   * changed at runtime.  返回配置的拷贝，配置不能在运行时被改变
    */
   def getConf: SparkConf = conf.clone()
 
@@ -279,6 +280,7 @@ class SparkContext(config: SparkConf) extends Logging {
   private[spark] def statusStore: AppStatusStore = _statusStore
 
   // An asynchronous listener bus for Spark events
+  // Spark事件的异步监听总线
   private[spark] def listenerBus: LiveListenerBus = _listenerBus
 
   // This function allows components created by SparkEnv to be mocked in unit tests:
@@ -311,9 +313,12 @@ class SparkContext(config: SparkConf) extends Logging {
 
   /**
    * A default Hadoop Configuration for the Hadoop code (e.g. file systems) that we reuse.
+   * 我们重复使用的Hadoop代码（例如文件系统）的默认Hadoop配置。
    *
    * @note As it will be reused in all Hadoop RDDs, it's better not to modify it unless you
    * plan to set some global configurations for all Hadoop RDDs.
+   * 由于它将在所有Hadoop RDD中重用，因此最好不要对其进行修改，
+   * 除非您计划为所有Hadoop RDD设置一些全局配置。
    */
   def hadoopConfiguration: Configuration = _hadoopConfiguration
 
@@ -341,7 +346,9 @@ class SparkContext(config: SparkConf) extends Logging {
 
   /**
    * A unique identifier for the Spark application.
+   * Spark应用程序的唯一标识符。
    * Its format depends on the scheduler implementation.
+   * 其格式取决于调度程序的实现。
    * (i.e.
    *  in case of local spark app something like 'local-1433865536131'
    *  in case of YARN something like 'application_1433865536131_34483'
@@ -363,10 +370,13 @@ class SparkContext(config: SparkConf) extends Logging {
   private[spark] var checkpointDir: Option[String] = None
 
   // Thread Local variable that can be used by users to pass information down the stack
+  // 线程局部变量，用户可用于将信息向下传递到堆栈
   protected[spark] val localProperties = new InheritableThreadLocal[Properties] {
     override protected def childValue(parent: Properties): Properties = {
       // Note: make a clone such that changes in the parent properties aren't reflected in
       // the those of the children threads, which has confusing semantics (SPARK-10563).
+      // 进行克隆，以使父属性的更改不会反映在子线程的属性中，
+      // 该子线程具有令人困惑的语义（SPARK-10563）。
       Utils.cloneProperties(parent)
     }
     override protected def initialValue(): Properties = new Properties()
@@ -397,6 +407,7 @@ class SparkContext(config: SparkConf) extends Logging {
     Utils.setLogLevel(org.apache.log4j.Level.toLevel(upperCased))
   }
 
+  // 初始化context
   try {
     _conf = config.clone()
     _conf.validateSettings()
@@ -430,6 +441,8 @@ class SparkContext(config: SparkConf) extends Logging {
 
     // Set Spark driver host and port system properties. This explicitly sets the configuration
     // instead of relying on the default value of the config constant.
+    // 设置Spark驱动程序主机和端口系统属性。
+    // 这将显式设置配置，而不是依赖config常量的默认值。
     _conf.set(DRIVER_HOST_ADDRESS, _conf.get(DRIVER_HOST_ADDRESS))
     _conf.setIfMissing(DRIVER_PORT, 0)
 
