@@ -210,29 +210,39 @@ class SparkContext(config: SparkConf) extends Logging {
   // 私有变量。这些变量保留上下文的内部状态，并且外界无法访问。
   // 它们是可变的，因为我们希望提前将它们初始化为某个中性值，
   // 因此在构造函数仍在运行时调用“ stop（）”是安全的。
-  
+
+  // _conf: spark 配置
   private var _conf: SparkConf = _
+  // _eventLogDir: 事件日志路径
   private var _eventLogDir: Option[URI] = None
+  // _eventLogCodec 事件日志的压缩算法
   private var _eventLogCodec: Option[String] = None
   private var _listenerBus: LiveListenerBus = _
   private var _env: SparkEnv = _
   private var _statusTracker: SparkStatusTracker = _
   private var _progressBar: Option[ConsoleProgressBar] = None
   private var _ui: Option[SparkUI] = None
+  // _hadoopConfiguration：hadoop的配置信息
   private var _hadoopConfiguration: Configuration = _
+  // _executorMemory：Executor的内存大小
   private var _executorMemory: Int = _
   private var _schedulerBackend: SchedulerBackend = _
   private var _taskScheduler: TaskScheduler = _
   private var _heartbeatReceiver: RpcEndpointRef = _
   @volatile private var _dagScheduler: DAGScheduler = _
+  // _applicationId：当前应用的标识
   private var _applicationId: String = _
+  // _applicationAttemptId：当前应用尝试执行的标识
   private var _applicationAttemptId: Option[String] = None
   private var _eventLogger: Option[EventLoggingListener] = None
   private var _driverLogger: Option[DriverLogger] = None
   private var _executorAllocationManager: Option[ExecutorAllocationManager] = None
   private var _cleaner: Option[ContextCleaner] = None
+  // _listenerBusStarted：LiveListenerBus是否已经启动的标记
   private var _listenerBusStarted: Boolean = false
+  // _jars：用户设置的Jar文件
   private var _jars: Seq[String] = _
+  // _files：用户设置的文件
   private var _files: Seq[String] = _
   private var _archives: Seq[String] = _
   private var _shutdownHookRef: AnyRef = _
@@ -2531,10 +2541,12 @@ class SparkContext(config: SparkConf) extends Logging {
    */
   def defaultMinPartitions: Int = math.min(defaultParallelism, 2)
 
+  // nextShuffleId：类型为AtomicInteger，用于生成下一个Shuffle的身份标识
   private val nextShuffleId = new AtomicInteger(0)
 
   private[spark] def newShuffleId(): Int = nextShuffleId.getAndIncrement()
 
+  // nextRddId：类型为AtomicInteger，用于生成下一个RDD的身份标识
   private val nextRddId = new AtomicInteger(0)
 
   /** Register a new RDD, returning its RDD ID */
