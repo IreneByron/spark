@@ -30,9 +30,13 @@ import org.apache.spark.internal.{config, Logging}
 
 /**
  * An event bus which posts events to its listeners.
+ * 事件总线，接收事件并且将事件提交到对应事件的监听器
  */
+// L是代表监听器的泛型参数，支持任何类型的监听器
+// E是代表事件的泛型参数
 private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
 
+  // 用于维护所有注册的监听器
   private[this] val listenersPlusTimers = new CopyOnWriteArrayList[(L, Option[Timer])]
 
   // Marked `private[spark]` for access in tests.
@@ -60,6 +64,8 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
 
   /**
    * Add a listener to listen events. This method is thread-safe and can be called in any thread.
+   * 向监听事件添加监听器的方法，这个方法是线程安全的（因为listenersPlusTimers采用CopyOnWriteArrayList实现），
+   * 可以在任何线程被调用。
    */
   final def addListener(listener: L): Unit = {
     listenersPlusTimers.add((listener, getTimer(listener)))
@@ -68,6 +74,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
   /**
    * Remove a listener and it won't receive any events. This method is thread-safe and can be called
    * in any thread.
+   * 移除一个监听器并且它不会再接收任何事件。这个方法是线程安全的，并且可以在任何线程中被调用
    */
   final def removeListener(listener: L): Unit = {
     listenersPlusTimers.asScala.find(_._1 eq listener).foreach { listenerAndTimer =>
@@ -95,6 +102,9 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
   /**
    * Post the event to all registered listeners. The `postToAll` caller should guarantee calling
    * `postToAll` in the same thread for all events.
+   * 将事件投递给所有的监听器。
+   * 虽然CopyOnWriteArrayList本身是线程的安全的，但是由于postToAll方法内部引入了“先检查后执行”的逻辑，
+   * 因而postToAll方法不是线程安全的，所以所有对postToAll方法的调用应当保证在同一个线程中；
    */
   def postToAll(event: E): Unit = {
     // JavaConverters can create a JIterableWrapper if we use asScala.
@@ -139,12 +149,15 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
   /**
    * Post an event to the specified listener. `onPostEvent` is guaranteed to be called in the same
    * thread for all listeners.
+   * 将事件投递给指定的监听器，需要保证调用onPostEvent的所有监听器在同一个线程里
+   * 此方法只提供了接口定义，具体实现需要子类提供；
    */
   protected def doPostEvent(listener: L, event: E): Unit
 
   /** Allows bus implementations to prevent error logging for certain exceptions. */
   protected def isIgnorableException(e: Throwable): Boolean = false
 
+  /** 查找与指定类型相同的监听器列表。 */
   private[spark] def findListenersByClass[T <: L : ClassTag](): Seq[T] = {
     val c = implicitly[ClassTag[T]].runtimeClass
     listeners.asScala.filter(_.getClass == c).map(_.asInstanceOf[T]).toSeq
