@@ -278,6 +278,7 @@ case class SparkListenerResourceProfileAdded(resourceProfile: ResourceProfile)
  *
  * Note that this is an internal interface which might change in different Spark releases.
  */
+// SparkListenerInterface定义了所有SparkListener应当遵守的接口规范
 private[spark] trait SparkListenerInterface {
 
   /**

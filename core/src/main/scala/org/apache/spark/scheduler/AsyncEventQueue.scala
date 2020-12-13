@@ -30,6 +30,7 @@ import org.apache.spark.util.Utils
 /**
  * An asynchronous queue for events. All events posted to this queue will be delivered to the child
  * listeners in a separate thread.
+ * 事件异步队列。所有事件会被发送到这个对联，然后被传递到分离线程的子监听器
  *
  * Delivery will only begin when the `start()` method is called. The `stop()` method should be
  * called when no more events need to be delivered.
@@ -50,6 +51,7 @@ private class AsyncEventQueue(
   // if no such conf is specified, use the value specified in
   // LISTENER_BUS_EVENT_QUEUE_CAPACITY
   private[scheduler] def capacity: Int = {
+    // 容量大小 默认10000
     val queueSize = conf.getInt(s"$LISTENER_BUS_EVENT_QUEUE_PREFIX.$name.capacity",
       conf.get(LISTENER_BUS_EVENT_QUEUE_CAPACITY))
     assert(queueSize > 0, s"capacity for event queue $name must be greater than 0, " +
@@ -150,12 +152,13 @@ private class AsyncEventQueue(
   }
 
   def post(event: SparkListenerEvent): Unit = {
+    // 判断LiveListenerBus是否已经处于停止状态
     if (stopped.get()) {
       return
     }
 
     eventCount.incrementAndGet()
-    if (eventQueue.offer(event)) {
+    if (eventQueue.offer(event)) { // 向eventQueue中添加事件
       return
     }
 

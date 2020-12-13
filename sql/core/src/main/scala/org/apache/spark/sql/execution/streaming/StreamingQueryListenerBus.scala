@@ -31,6 +31,9 @@ import org.apache.spark.util.ListenerBus
  * Spark listener bus, so that it can receive [[StreamingQueryListener.Event]]s and dispatch them
  * to StreamingQueryListeners.
  *
+ * 用于将StreamingQueryListener.Event类型的事件投递到StreamingQueryListener类型的监听器，
+ * 此外还会将StreamingQueryListener.Event类型的事件交给SparkListenerBus；
+ *
  * Note 1: Each bus and its registered listeners are associated with a single SparkSession
  * and StreamingQueryManager. So this bus will dispatch events to registered listeners for only
  * those queries that were started in the associated SparkSession.

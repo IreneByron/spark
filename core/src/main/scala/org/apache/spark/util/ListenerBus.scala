@@ -111,6 +111,7 @@ private[spark] trait ListenerBus[L <: AnyRef, E] extends Logging {
     // However, this method will be called frequently. To avoid the wrapper cost, here we use
     // Java Iterator directly.
     val iter = listenersPlusTimers.iterator
+    // 遍历所有监听器，执行doPostEvent
     while (iter.hasNext) {
       val listenerAndMaybeTimer = iter.next()
       val listener = listenerAndMaybeTimer._1

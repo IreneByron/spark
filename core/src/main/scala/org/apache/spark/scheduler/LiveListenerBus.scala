@@ -36,7 +36,7 @@ import org.apache.spark.metrics.source.Source
 
 /**
  * Asynchronously passes SparkListenerEvents to registered SparkListeners.
- * 异步将SparkListenerEvents传递给已注册的SparkListeners。
+ * 异步将SparkListenerEvents传递给已注册的SparkListeners。达到实时刷新UI界面数据的效果
  *
  * Until `start()` is called, all posted events are only buffered. Only after this listener bus
  * has started will events be actually propagated to all attached listeners. This listener bus
@@ -54,16 +54,24 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
   private[spark] val metrics = new LiveListenerBusMetrics(conf)
 
   // Indicate if `start()` is called
+  // 标记LiveListenerBus的启动状态的AtomicBoolean类型的变量
   private val started = new AtomicBoolean(false)
   // Indicate if `stop()` is called
+  // 标记LiveListenerBus的停止状态的AtomicBoolean类型的变量
   private val stopped = new AtomicBoolean(false)
 
-  /** A counter for dropped events. It will be reset every time we log it. */
+  /** A counter for dropped events. It will be reset every time we log it.
+   *  使用AtomicLong类型对删除的事件进行计数
+   *  每当日志打印了droppedEventsCounter后，会将droppedEventsCounter重置为0
+   * */
   private val droppedEventsCounter = new AtomicLong(0L)
 
-  /** When `droppedEventsCounter` was logged last time in milliseconds. */
+  /** When `droppedEventsCounter` was logged last time in milliseconds.
+   *  用于记录最后一次日志打印droppedEventsCounter的时间戳
+   * */
   @volatile private var lastReportTimestamp = 0L
 
+  // SparkListenerEvent事件的阻塞队列
   private val queues = new CopyOnWriteArrayList[AsyncEventQueue]()
 
   // Visible for testing.
@@ -93,6 +101,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
    * Add a listener to a specific queue, creating a new queue if needed. Queues are independent
    * of each other (each one uses a separate thread for delivering events), allowing slower
    * listeners to be somewhat isolated from others.
+   * 向一个特定的队列添加监听器
    */
   private[spark] def addToQueue(
       listener: SparkListenerInterface,
@@ -130,7 +139,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
       }
   }
 
-  /** Post an event to all queues. */
+  /** Post an event to all queues. 将事件添加到队列 */
   def post(event: SparkListenerEvent): Unit = {
     if (stopped.get()) {
       return
@@ -148,6 +157,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
 
     // Otherwise, need to synchronize to check whether the bus is started, to make sure the thread
     // calling start() picks up the new event.
+    // 同步
     synchronized {
       if (!started.get()) {
         queuedEvents += event

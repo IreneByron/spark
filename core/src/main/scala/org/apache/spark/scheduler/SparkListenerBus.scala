@@ -21,6 +21,7 @@ import org.apache.spark.util.ListenerBus
 
 /**
  * A [[SparkListenerEvent]] bus that relays [[SparkListenerEvent]]s to its listeners
+ * 用于将SparkListenerEvent类型的事件投递到SparkListenerInterface类型的监听器；
  */
 private[spark] trait SparkListenerBus
   extends ListenerBus[SparkListenerInterface, SparkListenerEvent] {
@@ -28,6 +29,9 @@ private[spark] trait SparkListenerBus
   protected override def doPostEvent(
       listener: SparkListenerInterface,
       event: SparkListenerEvent): Unit = {
+    // SparkListenerInterface是trait
+    // SparkListenerEvent 是trait，如下各类为实现的样例类
+    // 匹配事件，调用监听器的不同方法
     event match {
       case stageSubmitted: SparkListenerStageSubmitted =>
         listener.onStageSubmitted(stageSubmitted)
@@ -97,7 +101,7 @@ private[spark] trait SparkListenerBus
         listener.onUnschedulableTaskSetRemoved(unschedulableTaskSetRemoved)
       case resourceProfileAdded: SparkListenerResourceProfileAdded =>
         listener.onResourceProfileAdded(resourceProfileAdded)
-      case _ => listener.onOtherEvent(event)
+      case _ => listener.onOtherEvent(event) // 未匹配到的，执行默认
     }
   }
 
