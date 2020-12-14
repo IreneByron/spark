@@ -165,6 +165,7 @@ object SparkEnv extends Logging {
 
   /**
    * Create a SparkEnv for the driver.
+   * 为driver创建一个SparkEnv
    */
   private[spark] def createDriverEnv(
       conf: SparkConf,
@@ -252,6 +253,7 @@ object SparkEnv extends Logging {
     val isDriver = executorId == SparkContext.DRIVER_IDENTIFIER
 
     // Listener bus is only used on the driver
+    // 监听总线 仅在driver端使用
     if (isDriver) {
       assert(listenerBus != null, "Attempted to create driver SparkEnv with null listener bus!")
     }

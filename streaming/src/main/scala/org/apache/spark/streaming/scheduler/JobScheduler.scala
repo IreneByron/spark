@@ -40,6 +40,7 @@ private[scheduler] case class ErrorReported(msg: String, e: Throwable) extends J
 /**
  * This class schedules jobs to be run on Spark. It uses the JobGenerator to generate
  * the jobs and runs them using a thread pool.
+ * 此类计划作业在Spark上运行。它使用JobGenerator生成作业，并使用线程池运行它们。
  */
 private[streaming]
 class JobScheduler(val ssc: StreamingContext) extends Logging {

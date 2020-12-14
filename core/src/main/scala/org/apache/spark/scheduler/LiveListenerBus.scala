@@ -87,7 +87,9 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
     addToQueue(listener, EXECUTOR_MANAGEMENT_QUEUE)
   }
 
-  /** Add a listener to the application status queue. */
+  /** Add a listener to the application status queue.
+   * 将监听器添加到应用程序状态队列。
+   * */
   def addToStatusQueue(listener: SparkListenerInterface): Unit = {
     addToQueue(listener, APP_STATUS_QUEUE)
   }
@@ -141,6 +143,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
 
   /** Post an event to all queues. 将事件添加到队列 */
   def post(event: SparkListenerEvent): Unit = {
+    // 判断LiveListenerBus是否已经处于停止状态
     if (stopped.get()) {
       return
     }
@@ -150,6 +153,8 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
     // If the event buffer is null, it means the bus has been started and we can avoid
     // synchronization and post events directly to the queues. This should be the most
     // common case during the life of the bus.
+    // 如果事件缓冲区为null，则表示总线已启动，
+    // 我们可以避免同步并将事件直接发布到队列中。这应该是总线生命周期中最常见的情况。
     if (queuedEvents == null) {
       postToQueues(event)
       return
@@ -157,7 +162,7 @@ private[spark] class LiveListenerBus(conf: SparkConf) {
 
     // Otherwise, need to synchronize to check whether the bus is started, to make sure the thread
     // calling start() picks up the new event.
-    // 同步
+    // 否则，需要进行同步以检查总线是否已启动，以确保调用start（）的线程接收到新事件。
     synchronized {
       if (!started.get()) {
         queuedEvents += event

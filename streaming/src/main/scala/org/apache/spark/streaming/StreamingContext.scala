@@ -726,6 +726,7 @@ class StreamingContext private[streaming] (
 
   private def registerProgressListener(): Unit = {
     addStreamingListener(progressListener)
+    // 添加监听器
     sc.addSparkListener(progressListener)
     sc.ui.foreach(_.setStreamingJobProgressListener(progressListener))
   }

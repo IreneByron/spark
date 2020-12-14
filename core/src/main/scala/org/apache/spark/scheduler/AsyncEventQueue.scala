@@ -162,6 +162,7 @@ private class AsyncEventQueue(
       return
     }
 
+    // 删除事件，并对删除事件的计数器递增
     eventCount.decrementAndGet()
     droppedEvents.inc()
     droppedEventsCounter.incrementAndGet()
@@ -181,6 +182,7 @@ private class AsyncEventQueue(
     if (droppedCountIncreased > 0 && curTime - lastReportTime >= LOGGING_INTERVAL) {
       // There may be multiple threads trying to logging dropped events,
       // Use 'compareAndSet' to make sure only one thread can win.
+      // 多线程记录时，保证只有一个线程成功记录下
       if (lastReportTimestamp.compareAndSet(lastReportTime, curTime)) {
         val previous = new java.util.Date(lastReportTime)
         lastDroppedEventsCounter = droppedEventsCount

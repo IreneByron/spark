@@ -275,6 +275,8 @@ case class SparkListenerResourceProfileAdded(resourceProfile: ResourceProfile)
 /**
  * Interface for listening to events from the Spark scheduler. Most applications should probably
  * extend SparkListener or SparkFirehoseListener directly, rather than implementing this class.
+ * 用于监听来自Spark调度程序的事件的接口。
+ * 大多数应用程序可能应该直接扩展SparkListener或SparkFirehoseListener，而不是实现此类。
  *
  * Note that this is an internal interface which might change in different Spark releases.
  */
@@ -283,57 +285,66 @@ private[spark] trait SparkListenerInterface {
 
   /**
    * Called when a stage completes successfully or fails, with information on the completed stage.
+   * 在阶段成功完成或失败时调用，并提供有关已完成阶段的信息。
    */
   def onStageCompleted(stageCompleted: SparkListenerStageCompleted): Unit
 
   /**
-   * Called when a stage is submitted
+   * Called when a stage is submitted 提交阶段时调用
    */
   def onStageSubmitted(stageSubmitted: SparkListenerStageSubmitted): Unit
 
   /**
-   * Called when a task starts
+   * Called when a task starts 任务开始时调用
    */
   def onTaskStart(taskStart: SparkListenerTaskStart): Unit
 
   /**
    * Called when a task begins remotely fetching its result (will not be called for tasks that do
    * not need to fetch the result remotely).
+   * 在任务开始远程获取其结果时调用（对于不需要远程获取结果的任务将不会调用）。
    */
   def onTaskGettingResult(taskGettingResult: SparkListenerTaskGettingResult): Unit
 
   /**
    * Called when a task ends
+   * 任务结束时调用
    */
   def onTaskEnd(taskEnd: SparkListenerTaskEnd): Unit
 
   /**
    * Called when a job starts
+   * 作业开始时调用
    */
   def onJobStart(jobStart: SparkListenerJobStart): Unit
 
   /**
    * Called when a job ends
+   * 作业结束时调用
    */
   def onJobEnd(jobEnd: SparkListenerJobEnd): Unit
 
   /**
    * Called when environment properties have been updated
+   * 在环境属性已更新时调用
    */
   def onEnvironmentUpdate(environmentUpdate: SparkListenerEnvironmentUpdate): Unit
 
   /**
    * Called when a new block manager has joined
+   * 新的区块管理器加入后调用
    */
   def onBlockManagerAdded(blockManagerAdded: SparkListenerBlockManagerAdded): Unit
 
   /**
    * Called when an existing block manager has been removed
+   * 删除现有块管理器时调用
    */
   def onBlockManagerRemoved(blockManagerRemoved: SparkListenerBlockManagerRemoved): Unit
 
   /**
    * Called when an RDD is manually unpersisted by the application
+   * 当应用程序手动取消RDD时调用
    */
   def onUnpersistRDD(unpersistRDD: SparkListenerUnpersistRDD): Unit
 
