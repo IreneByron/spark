@@ -87,6 +87,7 @@ class SparkContext(config: SparkConf) extends Logging {
 
   // The call site where this SparkContext was constructed.
   // 构造此SparkContext的call site
+  // 获取当前SparkContext的当前调用栈。包含了最靠近栈顶的用户类及最靠近栈底的Scala或者Spark核心类信息
   private val creationSite: CallSite = Utils.getCallSite()
 
   if (!config.get(EXECUTOR_ALLOW_SPARK_CONTEXT)) {
@@ -419,6 +420,7 @@ class SparkContext(config: SparkConf) extends Logging {
 
   // 初始化context
   try {
+    // 配置校验
     _conf = config.clone()
     _conf.validateSettings()
     _conf.set("spark.app.startTime", startTime.toString)
@@ -429,7 +431,7 @@ class SparkContext(config: SparkConf) extends Logging {
     if (!_conf.contains("spark.app.name")) {
       throw new SparkException("An application name must be set in your configuration")
     }
-
+    // 初始化事件日志目录和压缩类型
     _driverLogger = DriverLogger(_conf)
 
     val resourcesFileOpt = conf.get(DRIVER_RESOURCES_FILE)
@@ -501,8 +503,10 @@ class SparkContext(config: SparkConf) extends Logging {
       _conf.set("spark.repl.class.uri", replUri)
     }
 
+    // 初始化状态跟踪器SparkStatusTracker
     _statusTracker = new SparkStatusTracker(this, _statusStore)
 
+    // 根据配置创建ProgressBar
     _progressBar =
       if (_conf.get(UI_SHOW_CONSOLE_PROGRESS)) {
         Some(new ConsoleProgressBar(this))
@@ -510,6 +514,12 @@ class SparkContext(config: SparkConf) extends Logging {
         None
       }
 
+    /** 创建并初始化Spark UI
+     * SparkUI 提供了用浏览器访问具有样式及布局并且提供丰富监控数据的页面。
+     * 其采用的是时间监听机制。发送的事件会存入缓存，
+     * 由定时调度器取出后分配给监听此事件的监听器对监控数据进行更新。
+     * 如果不需要SparkUI，则可以将spark.ui.enabled置为false。
+     * */
     _ui =
       if (conf.get(UI_ENABLED)) {
         Some(SparkUI.create(Some(this), _statusStore, _conf, _env.securityManager, appName, "",
@@ -522,6 +532,7 @@ class SparkContext(config: SparkConf) extends Logging {
     // the bound port to the cluster manager properly
     _ui.foreach(_.bind())
 
+    // 默认情况下，Spark使用HDFS作为分布式文件系统，所以需要获取Hadoop相关的配置信息：
     _hadoopConfiguration = SparkHadoopUtil.get.newConfiguration(_conf)
     // Performance optimization: this dummy call to .size() triggers eager evaluation of
     // Configuration's internal  `properties` field, guaranteeing that it will be computed and
@@ -555,6 +566,7 @@ class SparkContext(config: SparkConf) extends Logging {
       }
     }
 
+    // 指定Executor占用的内存的大小
     _executorMemory = _conf.getOption(EXECUTOR_MEMORY.key)
       .orElse(Option(System.getenv("SPARK_EXECUTOR_MEMORY")))
       .orElse(Option(System.getenv("SPARK_MEM"))
@@ -2882,6 +2894,7 @@ object SparkContext extends Logging {
 
   /**
    * The number of cores available to the driver to use for tasks such as I/O with Netty
+   * 驱动程序可用于诸如Netty的I/O之类的任务的可用内核数
    */
   private[spark] def numDriverCores(master: String, conf: SparkConf): Int = {
     def convertToInt(threads: String): Int = {

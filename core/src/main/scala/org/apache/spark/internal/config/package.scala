@@ -930,7 +930,7 @@ package object config {
       .createWithDefaultString("AES/CTR/NoPadding")
 
   private[spark] val DRIVER_HOST_ADDRESS = ConfigBuilder("spark.driver.host")
-    .doc("Address of driver endpoints.")
+    .doc("Address of driver endpoints.") // driver端点的地址
     .version("0.7.0")
     .stringConf
     .createWithDefault(Utils.localCanonicalHostName())
@@ -949,7 +949,7 @@ package object config {
     .createWithDefault(false)
 
   private[spark] val DRIVER_BIND_ADDRESS = ConfigBuilder("spark.driver.bindAddress")
-    .doc("Address where to bind network listen sockets on the driver.")
+    .doc("Address where to bind network listen sockets on the driver.") //在driver上绑定网络监听sockets的地址
     .version("2.1.0")
     .fallbackConf(DRIVER_HOST_ADDRESS)
 

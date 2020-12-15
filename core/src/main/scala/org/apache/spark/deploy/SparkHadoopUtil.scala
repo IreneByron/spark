@@ -78,6 +78,7 @@ private[spark] class SparkHadoopUtil extends Logging {
   /**
    * Appends S3-specific, spark.hadoop.*, and spark.buffer.size configurations to a Hadoop
    * configuration.
+   * 将特定于S3的spark.hadoop。*和spark.buffer.size配置追加到Hadoop配置。
    */
   def appendS3AndSparkHadoopHiveConfigurations(
       conf: SparkConf,
@@ -435,6 +436,7 @@ private[spark] object SparkHadoopUtil {
     // the behavior of the old implementation of this code, for backwards compatibility.
     if (conf != null) {
       // Explicitly check for S3 environment variables
+      // 将Amazon S3文件系统的AWS_ACCESS_KEY_ID和 AWS_SECRET_ACCESS_KEY加载到Hadoop的Configuration；
       val keyId = System.getenv("AWS_ACCESS_KEY_ID")
       val accessKey = System.getenv("AWS_SECRET_ACCESS_KEY")
       if (keyId != null && accessKey != null) {
@@ -450,8 +452,10 @@ private[spark] object SparkHadoopUtil {
           hadoopConf.set("fs.s3a.session.token", sessionToken)
         }
       }
+      // 将SparkConf中所有的以spark.hadoop.开头的属性都赋值到Hadoop的Configuration
       appendSparkHadoopConfigs(conf, hadoopConf)
       appendSparkHiveConfigs(conf, hadoopConf)
+      // 将SparkConf的属性spark.buffer.size复制到Hadoop的Configuration的配置io.file.buffer.size
       val bufferSize = conf.get(BUFFER_SIZE).toString
       hadoopConf.set("io.file.buffer.size", bufferSize)
     }
