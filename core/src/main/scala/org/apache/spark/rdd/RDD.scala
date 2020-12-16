@@ -63,8 +63,16 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  * can be saved as SequenceFiles.
  * All operations are automatically available on any RDD of the right type (e.g. RDD[(Int, Int)])
  * through implicit.
+ * 弹性分布式数据集（RDD），Spark中的基本抽象。
+ * 表示可以并行操作的元素的不变分区集合。
+ * 此类包含所有RDD上可用的基本操作，例如“ map”，“ filter”和“ persist”。
+ * 另外，[[org.apache.spark.rdd.PairRDDFunctions]]包含仅在键-值对的RDD上可用的操作，例如`groupByKey`和`join`;
+ * [[org.apache.spark.rdd.DoubleRDDFunctions] ]包含仅在Doubles的RDD上可用的操作；
+ * 和[[org.apache.spark.rdd.SequenceFileRDDFunctions]]包含可保存为SequenceFiles的RDD上可用的操作。
+ * 所有操作都可以通过隐式自动在正确类型的任何RDD（例如RDD [（Int，Int）]）上使用。
  *
  * Internally, each RDD is characterized by five main properties:
+ * 在内部，每个RDD具有五个主要属性：
  *
  *  - A list of partitions
  *  - A function for computing each split
@@ -72,16 +80,27 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  *  - Optionally, a Partitioner for key-value RDDs (e.g. to say that the RDD is hash-partitioned)
  *  - Optionally, a list of preferred locations to compute each split on (e.g. block locations for
  *    an HDFS file)
+ *  - 分区列表
+ *  - 用于计算每个拆分的函数
+ *  - 对其他RDD的依赖关系列表
+ *  -（可选）用于键值RDD的分区程序（例如，该RDD是哈希分区的）
+ *  -（可选）用于计算每个细分的首选位置列表（例如，例如，HDFS文件的块位置）
  *
  * All of the scheduling and execution in Spark is done based on these methods, allowing each RDD
  * to implement its own way of computing itself. Indeed, users can implement custom RDDs (e.g. for
  * reading data from a new storage system) by overriding these functions. Please refer to the
  * <a href="http://people.csail.mit.edu/matei/papers/2012/nsdi_spark.pdf">Spark paper</a>
  * for more details on RDD internals.
+ * Spark中的所有调度和执行都是基于这些方法完成的，从而允许每个RDD自行实现自己的计算方式。
+ * 实际上，用户可以通过覆盖这些功能来实现自定义RDD（例如，用于从新存储系统读取数据）。
+ * 请参阅<a href="http://people.csail.mit.edu/matei/papers/2012/nsdi_spark.pdf">Spark论文</a>，
+ * 以获取有关RDD内部的更多详细信息。
  */
 abstract class RDD[T: ClassTag](
-    @transient private var _sc: SparkContext,
+    @transient private var _sc: SparkContext, // _sc由@transient修饰，所以此属性不会被序列化。
     @transient private var deps: Seq[Dependency[_]]
+    // deps: 构造器参数之一，是Dependency的序列，用于存储当前RDD的依赖。
+    // RDD的子类在实现时不一定会传递此参数。由于deps由@transient修饰，所以此属性不会被序列化。
   ) extends Serializable with Logging {
 
   if (classOf[RDD[_]].isAssignableFrom(elementClassTag.runtimeClass)) {
@@ -117,6 +136,7 @@ abstract class RDD[T: ClassTag](
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
+   * 对RDD的分区进行计算
    */
   @DeveloperApi
   def compute(split: Partition, context: TaskContext): Iterator[T]
@@ -124,20 +144,25 @@ abstract class RDD[T: ClassTag](
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
+   * 由子类实现，以返回此RDD中的一组分区。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
    *
    * The partitions in this array must satisfy the following property:
    *   `rdd.partitions.zipWithIndex.forall { case (partition, index) => partition.index == index }`
+   *   此数组中的分区必须满足以下属性：
+   *   rdd.partitions.zipWithIndex.forall {case（partition，index）=> partition.index == index}`
    */
   protected def getPartitions: Array[Partition]
 
   /**
    * Implemented by subclasses to return how this RDD depends on parent RDDs. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
+   * 由子类实现，以返回此RDD如何依赖于父RDD。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
    */
   protected def getDependencies: Seq[Dependency[_]] = deps
 
   /**
    * Optionally overridden by subclasses to specify placement preferences.
+   * （可选）被子类覆盖以指定放置首选项。获取某一分区的偏好位置
    */
   protected def getPreferredLocations(split: Partition): Seq[String] = Nil
 
@@ -151,10 +176,14 @@ abstract class RDD[T: ClassTag](
   /** The SparkContext that created this RDD. */
   def sparkContext: SparkContext = sc
 
-  /** A unique ID for this RDD (within its SparkContext). */
+  /** A unique ID for this RDD (within its SparkContext).
+   * 当前RDD的唯一身份标识。此属性通过调用SparkContext的nextRddId属性生成。
+   * */
   val id: Int = sc.newRddId()
 
-  /** A friendly name for this RDD */
+  /** A friendly name for this RDD
+   * RDD的名称。name由@transient修饰，所以此属性不会被序列化。
+   * */
   @transient var name: String = _
 
   /** Assign a name to this RDD */
@@ -165,6 +194,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Mark this RDD for persisting using the specified level.
+   * 将该RDD标记为使用指定级别进行持久化。
    *
    * @param newLevel the target storage level
    * @param allowOverride whether to override any existing level with the new one
@@ -216,6 +246,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Mark the RDD as non-persistent, and remove all blocks for it from memory and disk.
+   * 将RDD标记为非持久性，并从内存和磁盘中删除所有它的块。
    *
    * @param blocking Whether to block until all blocks are deleted (default: false)
    * @return This RDD.
@@ -227,28 +258,40 @@ abstract class RDD[T: ClassTag](
     this
   }
 
-  /** Get the RDD's current storage level, or StorageLevel.NONE if none is set. */
+  /**
+   * Get the RDD's current storage level, or StorageLevel.NONE if none is set.
+   * 获取RDD的当前存储级别，如果未设置，则获取到StorageLevel.NONE。
+   */
   def getStorageLevel: StorageLevel = storageLevel
 
   /**
    * Lock for all mutable state of this RDD (persistence, partitions, dependencies, etc.).  We do
    * not use `this` because RDDs are user-visible, so users might have added their own locking on
    * RDDs; sharing that could lead to a deadlock.
+   * 锁定此RDD的所有可变状态（持久性，分区，依赖项等）。
+   * 我们不使用“ this”，因为RDD对用户可见，因此用户可能已经在RDD上添加了自己的锁定。共享它可能导致僵局。
    *
    * One thread might hold the lock on many of these, for a chain of RDD dependencies; but
    * because DAGs are acyclic, and we only ever hold locks for one path in that DAG, there is no
    * chance of deadlock.
+   * 对于一连串的RDD依赖关系，一个线程可能会锁定许多线程。
+   * 但是由于DAG是非循环的，并且我们只在该DAG中持有一条路径的锁，因此没有死锁的机会。
    *
    * Executors may reference the shared fields (though they should never mutate them,
    * that only happens on the driver).
+   * 执行者可以引用共享字段（尽管他们永远都不应对其进行更改，而仅在驱动程序上发生）。
    */
   private val stateLock = new Serializable {}
 
   // Our dependencies and partitions will be gotten by calling subclass's methods below, and will
   // be overwritten when we're checkpointed
+  // 我们的依赖关系和分区将通过以下调用子类的方法获得，并且在我们被checkpinted时将被覆盖
+  // checkpoint的意思就是建立检查点,类似于快照,
+  // checkpoint的作用就是将DAG中比较重要的中间数据做一个检查点将结果存储到一个高可用的地方(通常这个地方就是HDFS里面)
   @volatile private var dependencies_ : Seq[Dependency[_]] = _
   // When we overwrite the dependencies we keep a weak reference to the old dependencies
   // for user controlled cleanup.
+  // 当我们覆盖依赖关系时，我们会对旧的依赖关系保持弱引用以进行用户控制的清理。
   @volatile @transient private var legacyDependencies: WeakReference[Seq[Dependency[_]]] = _
   @volatile @transient private var partitions_ : Array[Partition] = _
 
