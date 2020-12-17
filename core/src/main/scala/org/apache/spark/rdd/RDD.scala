@@ -80,11 +80,11 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  *  - Optionally, a Partitioner for key-value RDDs (e.g. to say that the RDD is hash-partitioned)
  *  - Optionally, a list of preferred locations to compute each split on (e.g. block locations for
  *    an HDFS file)
- *  - 分区列表
- *  - 用于计算每个拆分的函数
- *  - 对其他RDD的依赖关系列表
- *  -（可选）用于键值RDD的分区程序（例如，该RDD是哈希分区的）
- *  -（可选）用于计算每个细分的首选位置列表（例如，例如，HDFS文件的块位置）
+ *  - 有一个分片列表，就是能被切分，和hadoop一样的，能够切分的数据才能并行计算。
+ *  - 有一个函数计算每一个分片，这里指的是下面会的compute函数。
+ *  - 对其他的RDD的依赖列表，依赖还具体分为宽依赖和窄依赖。
+ *  - 可选：key-value型的RDD是根据哈希来分区的，类似于mapreduce当中的Paritioner接口，控制key分到哪个reduce。
+ *  - 可选：每一个分片的优先计算位置（preferred locations），比如HDFS的block的所在位置应该是优先计算的位置
  *
  * All of the scheduling and execution in Spark is done based on these methods, allowing each RDD
  * to implement its own way of computing itself. Indeed, users can implement custom RDDs (e.g. for
@@ -124,7 +124,9 @@ abstract class RDD[T: ClassTag](
     _sc
   }
 
-  /** Construct an RDD with just a one-to-one dependency on one parent */
+  /** Construct an RDD with just a one-to-one dependency on one parent
+   * 构造仅与一对父对象一对一依赖的RDD
+   * */
   def this(@transient oneParent: RDD[_]) =
     this(oneParent.context, List(new OneToOneDependency(oneParent)))
 
@@ -136,7 +138,7 @@ abstract class RDD[T: ClassTag](
   /**
    * :: DeveloperApi ::
    * Implemented by subclasses to compute a given partition.
-   * 对RDD的分区进行计算
+   * 对RDD的分区进行计算 返回一个可遍历的结果
    */
   @DeveloperApi
   def compute(split: Partition, context: TaskContext): Iterator[T]
@@ -144,7 +146,7 @@ abstract class RDD[T: ClassTag](
   /**
    * Implemented by subclasses to return the set of partitions in this RDD. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
-   * 由子类实现，以返回此RDD中的一组分区。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
+   * 由子类实现，返回此RDD中的所有partitions。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
    *
    * The partitions in this array must satisfy the following property:
    *   `rdd.partitions.zipWithIndex.forall { case (partition, index) => partition.index == index }`
@@ -156,17 +158,20 @@ abstract class RDD[T: ClassTag](
   /**
    * Implemented by subclasses to return how this RDD depends on parent RDDs. This method will only
    * be called once, so it is safe to implement a time-consuming computation in it.
-   * 由子类实现，以返回此RDD如何依赖于父RDD。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
+   * 由子类实现，计算该RDD和父RDD的依赖关系。此方法仅被调用一次，因此在其中执行耗时的计算是安全的。
    */
   protected def getDependencies: Seq[Dependency[_]] = deps
 
   /**
    * Optionally overridden by subclasses to specify placement preferences.
    * （可选）被子类覆盖以指定放置首选项。获取某一分区的偏好位置
+   * 指定优先位置，输入参数是split分片，输出结果是一组优先的节点位置
    */
   protected def getPreferredLocations(split: Partition): Seq[String] = Nil
 
-  /** Optionally overridden by subclasses to specify how they are partitioned. */
+  /** Optionally overridden by subclasses to specify how they are partitioned.
+   * 可选的，分区的方法，针对第4点，类似于mapreduce当中的Paritioner接口，控制key分到哪个reduce
+   * */
   @transient val partitioner: Option[Partitioner] = None
 
   // =======================================================================
@@ -301,6 +306,7 @@ abstract class RDD[T: ClassTag](
   /**
    * Get the list of dependencies of this RDD, taking into account whether the
    * RDD is checkpointed or not.
+   * 获取此RDD的依赖关系列表，考虑该RDD是否为检查点。
    */
   final def dependencies: Seq[Dependency[_]] = {
     checkpointRDD.map(r => List(new OneToOneDependency(r))).getOrElse {
@@ -317,6 +323,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Get the list of dependencies of this RDD ignoring checkpointing.
+   * 忽略检查点，获取此RDD的依赖项列表。
    */
   final private def internalDependencies: Option[Seq[Dependency[_]]] = {
     if (legacyDependencies != null) {
@@ -337,6 +344,7 @@ abstract class RDD[T: ClassTag](
   /**
    * Get the array of partitions of this RDD, taking into account whether the
    * RDD is checkpointed or not.
+   * 获取此RDD的分区数组，考虑该RDD是否已经checkpointed。
    */
   final def partitions: Array[Partition] = {
     checkpointRDD.map(_.partitions).getOrElse {
@@ -357,6 +365,7 @@ abstract class RDD[T: ClassTag](
 
   /**
    * Returns the number of partitions of this RDD.
+   * 返回此RDD的分区数。
    */
   @Since("1.6.0")
   final def getNumPartitions: Int = partitions.length
@@ -364,6 +373,7 @@ abstract class RDD[T: ClassTag](
   /**
    * Get the preferred locations of a partition, taking into account whether the
    * RDD is checkpointed.
+   * 获取分区的首选位置，考虑RDD是否已checkpointed。
    */
   final def preferredLocations(split: Partition): Seq[String] = {
     checkpointRDD.map(_.getPreferredLocations(split)).getOrElse {
@@ -375,6 +385,8 @@ abstract class RDD[T: ClassTag](
    * Internal method to this RDD; will read from cache if applicable, or otherwise compute it.
    * This should ''not'' be called by users directly, but is available for implementers of custom
    * subclasses of RDD.
+   * 该RDD的内部方法；将从缓存中读取（如果适用），否则进行计算。
+   * 用户“不应”直接调用此方法，但可用于RDD的自定义子类的实现者。
    */
   final def iterator(split: Partition, context: TaskContext): Iterator[T] = {
     if (storageLevel != StorageLevel.NONE) {
@@ -388,6 +400,8 @@ abstract class RDD[T: ClassTag](
    * Return the ancestors of the given RDD that are related to it only through a sequence of
    * narrow dependencies. This traverses the given RDD's dependency tree using DFS, but maintains
    * no ordering on the RDDs returned.
+   * 仅通过一系列狭窄的依赖关系返回与它相关的给定RDD的祖先。
+   * 这将使用DFS遍历给定的RDD的依赖关系树，但不会对返回的RDD保持任何顺序。
    */
   private[spark] def getNarrowAncestors: Seq[RDD[_]] = {
     val ancestors = new mutable.HashSet[RDD[_]]

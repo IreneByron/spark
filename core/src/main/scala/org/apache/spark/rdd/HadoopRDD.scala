@@ -77,6 +77,9 @@ private[spark] class HadoopPartition(rddId: Int, override val index: Int, s: Inp
  * :: DeveloperApi ::
  * An RDD that provides core functionality for reading data stored in Hadoop (e.g., files in HDFS,
  * sources in HBase, or S3), using the older MapReduce API (`org.apache.hadoop.mapred`).
+ * 专为Hadoop（HDFS、Hbase、S3）设计的RDD
+ * RDD使用较旧的MapReduce API（org.apache.hadoop.mapred）提供核心功能，
+ * 以读取Hadoop中存储的数据（例如HDFS中的文件，HBase或S3中的源代码）。
  *
  * @param sc The SparkContext to associate the RDD with.
  * @param broadcastedConf A general Hadoop Configuration, or a subclass of it. If the enclosed

@@ -39,13 +39,21 @@ abstract class Dependency[T] extends Serializable {
  * :: DeveloperApi ::
  * Base class for dependencies where each partition of the child RDD depends on a small number
  * of partitions of the parent RDD. Narrow dependencies allow for pipelined execution.
+ * 依赖关系的基类，其中子RDD的每个分区都依赖于父RDD的少量分区。狭窄的依赖关系允许流水线执行。
+ * -----
+ * 宽依赖和窄依赖：
+ * 如果RDD的每个分区最多只能被一个Child RDD的一个分区使用，则称之为narrow dependency；
+ * 若多个Child RDD分区都可以依赖，则称之为wide dependency。
+ * 不同的操作依据其特性，可能会产生不同的依赖。
  */
 @DeveloperApi
 abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] {
   /**
    * Get the parent partitions for a child partition.
+   * 获取子分区的父分区。
    * @param partitionId a partition of the child RDD
    * @return the partitions of the parent RDD that the child partition depends upon
+   *         子分区所依赖的父RDD的分区
    */
   def getParents(partitionId: Int): Seq[Int]
 
@@ -57,6 +65,8 @@ abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] {
  * :: DeveloperApi ::
  * Represents a dependency on the output of a shuffle stage. Note that in the case of shuffle,
  * the RDD is transient since we don't need it on the executor side.
+ * 表示对shuffle阶段的输出的依赖性。
+ * 请注意，在shuffle的情况下，RDD是瞬态的，因为在executor端不需要它。
  *
  * @param _rdd the parent RDD
  * @param partitioner partitioner used to partition the shuffle output
@@ -67,15 +77,16 @@ abstract class NarrowDependency[T](_rdd: RDD[T]) extends Dependency[T] {
  * @param aggregator map/reduce-side aggregator for RDD's shuffle
  * @param mapSideCombine whether to perform partial aggregation (also known as map-side combine)
  * @param shuffleWriterProcessor the processor to control the write behavior in ShuffleMapTask
+ *                               控制ShuffleMapTask中的写入行为的处理器
  */
 @DeveloperApi
 class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
-    @transient private val _rdd: RDD[_ <: Product2[K, V]],
-    val partitioner: Partitioner,
-    val serializer: Serializer = SparkEnv.get.serializer,
-    val keyOrdering: Option[Ordering[K]] = None,
-    val aggregator: Option[Aggregator[K, V, C]] = None,
-    val mapSideCombine: Boolean = false,
+    @transient private val _rdd: RDD[_ <: Product2[K, V]],// 泛型要求必须是Product2[K, V]及其子类的RDD。
+    val partitioner: Partitioner, // 分区计算器Partitioner
+    val serializer: Serializer = SparkEnv.get.serializer, // SparkEnv中创建的serializer
+    val keyOrdering: Option[Ordering[K]] = None, // 按照K进行排序的scala.math.Ordering的实现类。
+    val aggregator: Option[Aggregator[K, V, C]] = None, // 对map任务的输出数据进行聚合的聚合器
+    val mapSideCombine: Boolean = false, // 是否在map端进行合并，默认为false
     val shuffleWriterProcessor: ShuffleWriteProcessor = new ShuffleWriteProcessor)
   extends Dependency[Product2[K, V]] {
 
@@ -118,6 +129,7 @@ class ShuffleDependency[K: ClassTag, V: ClassTag, C: ClassTag](
 /**
  * :: DeveloperApi ::
  * Represents a one-to-one dependency between partitions of the parent and child RDDs.
+ * 表示父RDD和子RDD分区之间的一对一依赖关系。
  */
 @DeveloperApi
 class OneToOneDependency[T](rdd: RDD[T]) extends NarrowDependency[T](rdd) {

@@ -956,6 +956,8 @@ class SparkContext(config: SparkConf) extends Logging {
    * Read a text file from HDFS, a local file system (available on all nodes), or any
    * Hadoop-supported file system URI, and return it as an RDD of Strings.
    * The text files must be encoded as UTF-8.
+   * 从HDFS，本地文件系统（在所有节点上都可用）或任何Hadoop支持的文件系统URI中读取文本文件，
+   * 并将其作为字符串的RDD返回。文本文件必须编码为UTF-8。
    *
    * @param path path to the text file on a supported file system
    * @param minPartitions suggested minimum number of partitions for the resulting RDD
@@ -964,6 +966,7 @@ class SparkContext(config: SparkConf) extends Logging {
   def textFile(
       path: String,
       minPartitions: Int = defaultMinPartitions): RDD[String] = withScope {
+    // textFile只是对hadoopFile方法做了一层封装。
     assertNotStopped()
     hadoopFile(path, classOf[TextInputFormat], classOf[LongWritable], classOf[Text],
       minPartitions).map(pair => pair._2.toString).setName(path)
@@ -1144,6 +1147,7 @@ class SparkContext(config: SparkConf) extends Logging {
   }
 
   /** Get an RDD for a Hadoop file with an arbitrary InputFormat
+   * 使用任意InputFormat获取Hadoop文件的RDD
    *
    * @note Because Hadoop's RecordReader class re-uses the same Writable object for each
    * record, directly caching the returned RDD or directly passing it to an aggregation or shuffle
@@ -1170,9 +1174,11 @@ class SparkContext(config: SparkConf) extends Logging {
     // See SPARK-11227 for details.
     FileSystem.getLocal(hadoopConfiguration)
 
-    // A Hadoop configuration can be about 10 KiB, which is pretty big, so broadcast it.
+    // A Hadoop configuration can be about 10 KiB, which is pretty big, so broadcast it. 广播Hadoop配置
     val confBroadcast = broadcast(new SerializableConfiguration(hadoopConfiguration))
+    // 设置路径方法
     val setInputPathsFunc = (jobConf: JobConf) => FileInputFormat.setInputPaths(jobConf, path)
+    // new了一个HadoopRDD,并返回
     new HadoopRDD(
       this,
       confBroadcast,
