@@ -45,6 +45,7 @@ import org.apache.spark.util.random.StratifiedSamplingUtils
 
 /**
  * Extra functions available on RDDs of (key, value) pairs through an implicit conversion.
+ * 通过隐式转换，在（键，值）对的RDD上可以使用其他功能。
  */
 class PairRDDFunctions[K, V](self: RDD[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null)
@@ -53,6 +54,8 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
   /**
    * Generic function to combine the elements for each key using a custom set of aggregation
    * functions. Turns an RDD[(K, V)] into a result of type RDD[(K, C)], for a "combined type" C
+   * 通用函数，使用一组自定义的聚合函数来组合每个键的元素。
+   * 对于“组合类型” C，将RDD [（K，V）]转换为RDD [（K，C）]类型的结果
    *
    * Users provide three functions:
    *
@@ -74,6 +77,7 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
       mapSideCombine: Boolean = true,
       serializer: Serializer = null)(implicit ct: ClassTag[C]): RDD[(K, C)] = self.withScope {
     require(mergeCombiners != null, "mergeCombiners must be defined") // required as of Spark 0.9.0
+    // 判断keyclass是不是array类型，如果是array并且在两种情况下throw exception。
     if (keyClass.isArray) {
       if (mapSideCombine) {
         throw new SparkException("Cannot use map-side combining with array keys.")
@@ -92,6 +96,7 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
         new InterruptibleIterator(context, aggregator.combineValuesByKey(iter, context))
       }, preservesPartitioning = true)
     } else {
+      // 默认走这
       new ShuffledRDD[K, V, C](self, partitioner)
         .setSerializer(serializer)
         .setAggregator(aggregator)
@@ -103,6 +108,8 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
    * Generic function to combine the elements for each key using a custom set of aggregation
    * functions. This method is here for backward compatibility. It does not provide combiner
    * classtag information to the shuffle.
+   * 通用函数，使用一组自定义的聚合函数来组合每个键的元素。
+   * 此方法是为了向后兼容。它不向shuffle提供组合器类标签信息。
    *
    * @see `combineByKeyWithClassTag`
    */
@@ -121,6 +128,8 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
    * Simplified version of combineByKeyWithClassTag that hash-partitions the output RDD.
    * This method is here for backward compatibility. It does not provide combiner
    * classtag information to the shuffle.
+   * CombineByKeyWithClassTag的简化版本，用于对输出RDD进行哈希分区。
+   * 此方法用于向后兼容。它不向shuffle提供组合器类标签信息。
    *
    * @see `combineByKeyWithClassTag`
    */
@@ -298,6 +307,9 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
    * Merge the values for each key using an associative and commutative reduce function. This will
    * also perform the merging locally on each mapper before sending results to a reducer, similarly
    * to a "combiner" in MapReduce.
+   * 使用关联和可交换的归约函数合并每个键的值。
+   * 在将结果发送给reducer之前，这还将在每个Mapper上本地执行合并，
+   * 类似于MapReduce中的“ combiner”。
    */
   def reduceByKey(partitioner: Partitioner, func: (V, V) => V): RDD[(K, V)] = self.withScope {
     combineByKeyWithClassTag[V]((v: V) => v, func, func, partitioner)

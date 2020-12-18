@@ -480,6 +480,7 @@ abstract class RDD[T: ClassTag](
    */
   def map[U: ClassTag](f: T => U): RDD[U] = withScope {
     val cleanF = sc.clean(f)
+    // 返回的是一个MapPartitionsRDD。并且对RDD中的每一个元素都调用了一个function
     new MapPartitionsRDD[U, T](this, (_, _, iter) => iter.map(cleanF))
   }
 
@@ -1892,7 +1893,7 @@ abstract class RDD[T: ClassTag](
   private val checkpointAllMarkedAncestors =
     Option(sc.getLocalProperty(RDD.CHECKPOINT_ALL_MARKED_ANCESTORS)).exists(_.toBoolean)
 
-  /** Returns the first parent RDD */
+  /** Returns the first parent RDD 取到父依赖 */
   protected[spark] def firstParent[U: ClassTag]: RDD[U] = {
     dependencies.head.rdd.asInstanceOf[RDD[U]]
   }

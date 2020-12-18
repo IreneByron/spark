@@ -23,6 +23,7 @@ import org.apache.spark.{Partition, TaskContext}
 
 /**
  * An RDD that applies the provided function to every partition of the parent RDD.
+ * 将提供的功能应用于父RDD的每个分区的RDD。
  *
  * @param prev the parent RDD.
  * @param f The function used to map a tuple of (TaskContext, partition index, input iterator) to
@@ -48,6 +49,8 @@ private[spark] class MapPartitionsRDD[U: ClassTag, T: ClassTag](
 
   override def getPartitions: Array[Partition] = firstParent[T].partitions
 
+  // 在没有依赖的条件下，根据分片的信息生成遍历数据的Iterable接口
+  // 在有前置依赖的条件下，在父RDD的Iterable接口上给遍历每个元素的时候再套上一个方法
   override def compute(split: Partition, context: TaskContext): Iterator[U] =
     f(context, split.index, firstParent[T].iterator(split, context))
 

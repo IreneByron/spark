@@ -242,9 +242,11 @@ class HadoopRDD[K, V](
     }
   }
 
+  // 根据输入的partition信息生成一个InterruptibleIterator
   override def compute(theSplit: Partition, context: TaskContext): InterruptibleIterator[(K, V)] = {
     val iter = new NextIterator[(K, V)] {
 
+      // 将compute的输入theSplit，转换为HadoopPartition
       private val split = theSplit.asInstanceOf[HadoopPartition]
       logInfo("Input split: " + split.inputSplit)
       private val jobConf = getJobConf()
@@ -310,6 +312,7 @@ class HadoopRDD[K, V](
       private val key: K = if (reader == null) null.asInstanceOf[K] else reader.createKey()
       private val value: V = if (reader == null) null.asInstanceOf[V] else reader.createValue()
 
+      // 重写getNext方法
       override def getNext(): (K, V) = {
         try {
           finished = !reader.next(key, value)
