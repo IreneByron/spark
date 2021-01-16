@@ -2548,9 +2548,12 @@ class SparkContext(config: SparkConf) extends Logging {
 
   def getCheckpointDir: Option[String] = checkpointDir
 
-  /** Default level of parallelism to use when not given by user (e.g. parallelize and makeRDD). */
+  /** Default level of parallelism to use when not given by user (e.g. parallelize and makeRDD).
+   * 默认并行度
+   * */
   def defaultParallelism: Int = {
     assertNotStopped()
+    // 任务调度器的默认并行度
     taskScheduler.defaultParallelism
   }
 
