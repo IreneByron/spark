@@ -23,7 +23,7 @@ import java.util.Locale
 import scala.io.Source
 import scala.util.Properties
 import scala.collection.JavaConverters._
-import scala.collection.mutable.Stack
+import scala.collection.mutable.ListBuffer
 
 import sbt._
 import sbt.Classpaths.publishTask
@@ -958,18 +958,24 @@ object Unidoc {
         .map(_.filterNot(_.getCanonicalPath.contains("org/apache/hadoop")))
     },
 
-    javacOptions in (JavaUnidoc, unidoc) := Seq(
-      "-windowtitle", "Spark " + version.value.replaceAll("-SNAPSHOT", "") + " JavaDoc",
-      "-public",
-      "-noqualifier", "java.lang",
-      "-tag", """example:a:Example\:""",
-      "-tag", """note:a:Note\:""",
-      "-tag", "group:X",
-      "-tag", "tparam:X",
-      "-tag", "constructor:X",
-      "-tag", "todo:X",
-      "-tag", "groupname:X"
-    ),
+    javacOptions in (JavaUnidoc, unidoc) := {
+      val versionParts = System.getProperty("java.version").split("[+.\\-]+", 3)
+      var major = versionParts(0).toInt
+      if (major == 1) major = versionParts(1).toInt
+
+      Seq(
+        "-windowtitle", "Spark " + version.value.replaceAll("-SNAPSHOT", "") + " JavaDoc",
+        "-public",
+        "-noqualifier", "java.lang",
+        "-tag", """example:a:Example\:""",
+        "-tag", """note:a:Note\:""",
+        "-tag", "group:X",
+        "-tag", "tparam:X",
+        "-tag", "constructor:X",
+        "-tag", "todo:X",
+        "-tag", "groupname:X",
+      ) ++ { if (major >= 9) Seq("--ignore-source-errors", "-notree") else Seq.empty }
+    },
 
     // Use GitHub repository for Scaladoc source links
     unidocSourceBase := s"https://github.com/apache/spark/tree/v${version.value}",
@@ -1109,14 +1115,14 @@ object TestSettings {
         // Because File.mkdirs() can fail if multiple callers are trying to create the same
         // parent directory, this code tries to create parents one at a time, and avoids
         // failures when the directories have been created by somebody else.
-        val stack = new Stack[File]()
+        val stack = new ListBuffer[File]()
         while (!dir.isDirectory()) {
-          stack.push(dir)
+          stack.prepend(dir)
           dir = dir.getParentFile()
         }
 
         while (stack.nonEmpty) {
-          val d = stack.pop()
+          val d = stack.remove(0)
           require(d.mkdir() || d.isDirectory(), s"Failed to create directory $d")
         }
       }
