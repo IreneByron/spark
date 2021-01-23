@@ -517,10 +517,15 @@ abstract class RDD[T: ClassTag](
       map.insertAll(partition.map(_ -> null))
       map.iterator.map(_._1)
     }
+    // partitioner默认没有值
     partitioner match {
       case Some(_) if numPartitions == partitions.length =>
         mapPartitions(removeDuplicatesInPartition, preservesPartitioning = true)
       case _ => map(x => (x, null)).reduceByKey((x, _) => x, numPartitions).map(_._1)
+        // (1,null),(2,null),(3,null),(4,null),(1,null),(2,null)
+        // (1,null),(1,null)
+        // (null,null) => null
+        // (1,null) => 1
     }
   }
 
@@ -618,8 +623,10 @@ abstract class RDD[T: ClassTag](
     withScope {
       require(fraction >= 0.0, "Negative fraction value: " + fraction)
       if (withReplacement) {
+        // 泊松分布
         new PartitionwiseSampledRDD[T, T](this, new PoissonSampler[T](fraction), true, seed)
       } else {
+        // 伯努利分布，离散型几率分布，
         new PartitionwiseSampledRDD[T, T](this, new BernoulliSampler[T](fraction), true, seed)
       }
     }
@@ -2146,6 +2153,7 @@ object RDD {
   // them automatically. However, we still keep the old functions in SparkContext for backward
   // compatibility and forward to the following functions directly.
 
+  // 隐式函数  将rdd变成PairRDDFunctions
   implicit def rddToPairRDDFunctions[K, V](rdd: RDD[(K, V)])
     (implicit kt: ClassTag[K], vt: ClassTag[V], ord: Ordering[K] = null): PairRDDFunctions[K, V] = {
     new PairRDDFunctions(rdd)

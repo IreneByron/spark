@@ -855,6 +855,7 @@ private[spark] class DAGScheduler(
       resultHandler: (Int, U) => Unit,
       properties: Properties): Unit = {
     val start = System.nanoTime
+    // 提交作业
     val waiter = submitJob(rdd, func, partitions, callSite, resultHandler, properties)
     ThreadUtils.awaitReady(waiter.completionFuture, Duration.Inf)
     waiter.completionFuture.value.get match {
@@ -1100,6 +1101,7 @@ private[spark] class DAGScheduler(
     listenerBus.post(SparkListenerTaskGettingResult(taskInfo))
   }
 
+  // 处理事件
   private[scheduler] def handleJobSubmitted(jobId: Int,
       finalRDD: RDD[_],
       func: (TaskContext, Iterator[_]) => _,
@@ -1147,6 +1149,7 @@ private[spark] class DAGScheduler(
     // Job submitted, clear internal data.
     barrierJobIdToNumTasksCheckFailures.remove(jobId)
 
+    // 激活的作业
     val job = new ActiveJob(jobId, finalStage, callSite, listener, properties)
     clearCacheLocs()
     logInfo("Got job %s (%s) with %d output partitions".format(

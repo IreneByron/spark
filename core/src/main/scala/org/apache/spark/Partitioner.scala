@@ -112,8 +112,10 @@ object Partitioner {
 class HashPartitioner(partitions: Int) extends Partitioner {
   require(partitions >= 0, s"Number of partitions ($partitions) cannot be negative.")
 
+  // 获取分区数量
   def numPartitions: Int = partitions
 
+  // 获取分区号码
   def getPartition(key: Any): Int = key match {
     case null => 0
     case _ => Utils.nonNegativeMod(key.hashCode, numPartitions)

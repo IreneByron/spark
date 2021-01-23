@@ -538,7 +538,9 @@ class PairRDDFunctions[K, V](self: RDD[(K, V)])
     if (keyClass.isArray && partitioner.isInstanceOf[HashPartitioner]) {
       throw new SparkException("HashPartitioner cannot partition array keys.")
     }
+    // 双等号走到Partitioner equals
     if (self.partitioner == Some(partitioner)) {
+      // 类型相等，分区数量相等，返回自己
       self
     } else {
       new ShuffledRDD[K, V, V](self, partitioner)
