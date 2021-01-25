@@ -214,6 +214,7 @@ private[spark] object ClosureCleaner extends Logging {
     // non LMF-closures should be less frequent from now on
     val maybeIndylambdaProxy = IndylambdaScalaClosures.getSerializationProxy(func)
 
+    // 检测闭包
     if (!isClosure(func.getClass) && maybeIndylambdaProxy.isEmpty) {
       logDebug(s"Expected a closure; got ${func.getClass.getName}")
       return
@@ -403,6 +404,7 @@ private[spark] object ClosureCleaner extends Logging {
     }
 
     if (checkSerializable) {
+      // 检测能不能序列化
       ensureSerializable(func)
     }
   }

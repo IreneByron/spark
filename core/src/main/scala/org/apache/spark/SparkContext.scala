@@ -2269,6 +2269,7 @@ class SparkContext(config: SparkConf) extends Logging {
     // 有向无环图
     dagScheduler.runJob(rdd, cleanedFunc, partitions, callSite, resultHandler, localProperties.get)
     progressBar.foreach(_.finishAll())
+    // 检查点操作
     rdd.doCheckpoint()
   }
 
@@ -2530,6 +2531,8 @@ class SparkContext(config: SparkConf) extends Logging {
    * @return the cleaned closure
    */
   private[spark] def clean[F <: AnyRef](f: F, checkSerializable: Boolean = true): F = {
+    // 闭包清除器，把闭包不需要的东西清除
+    // checkSerializable检查序列化
     ClosureCleaner.clean(f, checkSerializable)
     f
   }

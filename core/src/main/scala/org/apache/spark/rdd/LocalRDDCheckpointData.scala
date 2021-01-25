@@ -51,6 +51,7 @@ private[spark] class LocalRDDCheckpointData[T: ClassTag](@transient private val 
       !SparkEnv.get.blockManager.master.contains(RDDBlockId(rdd.id, i))
     }
     if (missingPartitionIndices.nonEmpty) {
+      // 执行作业
       rdd.sparkContext.runJob(rdd, action, missingPartitionIndices)
     }
 
