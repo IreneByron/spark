@@ -71,6 +71,7 @@ private[spark] class Client(
   import Client._
   import YarnSparkHadoopUtil._
 
+  // 创建yarnClient 在hadoop yarn jar包中
   private val yarnClient = YarnClient.createYarnClient
   private val hadoopConf = new YarnConfiguration(SparkHadoopUtil.newConfiguration(sparkConf))
 
@@ -1224,6 +1225,7 @@ private[spark] class Client(
    * throw an appropriate SparkException.
    */
   def run(): Unit = {
+    // 提交应用程序  返回的appId是全局yarn的应用ID
     this.appId = submitApplication()
     if (!launcherBackend.isConnected() && fireAndForget) {
       val report = getApplicationReport(appId)
@@ -1631,6 +1633,7 @@ private[spark] class YarnClusterApplication extends SparkApplication {
     conf.remove(FILES)
     conf.remove(ARCHIVES)
 
+    // 构建对象
     new Client(new ClientArguments(args), conf, null).run()
   }
 

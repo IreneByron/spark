@@ -30,6 +30,7 @@ private[spark] class ClientArguments(args: Array[String]) {
 
   parseArgs(args.toList)
 
+  // 解析参数
   private def parseArgs(inputArgs: List[String]): Unit = {
     var args = inputArgs
 

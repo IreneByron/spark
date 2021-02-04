@@ -97,6 +97,7 @@ class CoGroupedRDD[K: ClassTag](
 
   override def getDependencies: Seq[Dependency[_]] = {
     rdds.map { rdd: RDD[_] =>
+      // 判断分区器是否相同
       if (rdd.partitioner == Some(part)) {
         logDebug("Adding one-to-one dependency with " + rdd)
         new OneToOneDependency(rdd)
