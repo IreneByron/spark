@@ -37,6 +37,7 @@ import org.apache.spark.util.Utils
  */
 private[spark] class YarnRMClient extends Logging {
 
+  // am:application master  rm:resource manager
   private var amClient: AMRMClient[ContainerRequest] = _
   private var uiHistoryAddress: String = _
   private var registered: Boolean = false

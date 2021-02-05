@@ -174,12 +174,13 @@ private[spark] class Client(
     try {
       launcherBackend.connect()
       yarnClient.init(hadoopConf)
-      yarnClient.start()
+      yarnClient.start() //建立resourceManager连接
 
       logInfo("Requesting a new application from cluster with %d NodeManagers"
         .format(yarnClient.getYarnClusterMetrics.getNumNodeManagers))
 
       // Get a new application from our RM
+      // 创建应用
       val newApp = yarnClient.createApplication()
       val newAppResponse = newApp.getNewApplicationResponse()
       appId = newAppResponse.getApplicationId()
@@ -200,8 +201,8 @@ private[spark] class Client(
       verifyClusterResources(newAppResponse)
 
       // Set up the appropriate contexts to launch our AM
-      val containerContext = createContainerLaunchContext(newAppResponse)
-      val appContext = createApplicationSubmissionContext(newApp, containerContext)
+      val containerContext = createContainerLaunchContext(newAppResponse) // 容器环境 container作用：解耦合
+      val appContext = createApplicationSubmissionContext(newApp, containerContext) //提交环境
 
       // Finally, submit and monitor the application
       logInfo(s"Submitting application $appId to ResourceManager")
@@ -989,6 +990,7 @@ private[spark] class Client(
       }
     val amClass =
       if (isClusterMode) {
+        // 集群模式
         Utils.classForName("org.apache.spark.deploy.yarn.ApplicationMaster").getName
       } else {
         Utils.classForName("org.apache.spark.deploy.yarn.ExecutorLauncher").getName
@@ -1007,7 +1009,7 @@ private[spark] class Client(
       Seq("--dist-cache-conf",
         buildPath(Environment.PWD.$$(), LOCALIZED_CONF_DIR, DIST_CACHE_CONF_FILE))
 
-    // Command for the ApplicationMaster
+    // Command for the ApplicationMaster  启动Java程序
     val commands = prefixEnv ++
       Seq(Environment.JAVA_HOME.$$() + "/bin/java", "-server") ++
       javaOpts ++ amArgs ++

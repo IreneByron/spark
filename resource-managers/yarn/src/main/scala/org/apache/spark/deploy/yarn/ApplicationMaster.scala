@@ -95,6 +95,7 @@ private[spark] class ApplicationMaster(
     }
   }
 
+  // resource manager
   private val client = new YarnRMClient()
 
   // Default to twice the number of executors (twice the maximum number of executors if dynamic
@@ -264,6 +265,7 @@ private[spark] class ApplicationMaster(
       }
 
       if (isClusterMode) {
+        // 集群模式
         runDriver()
       } else {
         runExecutorLauncher()
@@ -493,6 +495,7 @@ private[spark] class ApplicationMaster(
 
   private def runDriver(): Unit = {
     addAmIpFilter(None, System.getenv(ApplicationConstants.APPLICATION_WEB_PROXY_BASE_ENV))
+    // 启动用户应用程序
     userClassThread = startUserApplication()
 
     // This a bit hacky, but we need to wait until the spark.driver.port property has
@@ -500,6 +503,7 @@ private[spark] class ApplicationMaster(
     logInfo("Waiting for spark context initialization...")
     val totalWaitTime = sparkConf.get(AM_MAX_WAIT_TIME)
     try {
+      // 线程阻塞，等待结果 等上下文环境对象
       val sc = ThreadUtils.awaitResult(sparkContextPromise.future,
         Duration(totalWaitTime, TimeUnit.MILLISECONDS))
       if (sc != null) {
@@ -719,16 +723,20 @@ private[spark] class ApplicationMaster(
       // TODO(davies): add R dependencies here
     }
 
+    // load --class 找到main方法
     val mainMethod = userClassLoader.loadClass(args.userClass)
       .getMethod("main", classOf[Array[String]])
 
     val userThread = new Thread {
       override def run(): Unit = {
         try {
+          // 判断main方法是不是静态的
           if (!Modifier.isStatic(mainMethod.getModifiers)) {
+            // 不是静态，报错
             logError(s"Could not find static main method in object ${args.userClass}")
             finish(FinalApplicationStatus.FAILED, ApplicationMaster.EXIT_EXCEPTION_USER_CLASS)
           } else {
+            // 是静态的话，invoke调用
             mainMethod.invoke(null, userArgs.toArray)
             finish(FinalApplicationStatus.SUCCEEDED, ApplicationMaster.EXIT_SUCCESS)
             logDebug("Done running user class")
@@ -760,7 +768,7 @@ private[spark] class ApplicationMaster(
     }
     userThread.setContextClassLoader(userClassLoader)
     userThread.setName("Driver")
-    userThread.start()
+    userThread.start() //启动线程
     userThread
   }
 
