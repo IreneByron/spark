@@ -393,7 +393,7 @@ private[spark] class SparkHadoopUtil extends Logging {
 
 }
 
-private[spark] object SparkHadoopUtil {
+private[spark] object SparkHadoopUtil extends Logging {
 
   private lazy val instance = new SparkHadoopUtil
 
@@ -452,12 +452,22 @@ private[spark] object SparkHadoopUtil {
           hadoopConf.set("fs.s3a.session.token", sessionToken)
         }
       }
+
+      loadHiveConfFile(conf, hadoopConf)
       // 将SparkConf中所有的以spark.hadoop.开头的属性都赋值到Hadoop的Configuration
       appendSparkHadoopConfigs(conf, hadoopConf)
       appendSparkHiveConfigs(conf, hadoopConf)
       // 将SparkConf的属性spark.buffer.size复制到Hadoop的Configuration的配置io.file.buffer.size
       val bufferSize = conf.get(BUFFER_SIZE).toString
       hadoopConf.set("io.file.buffer.size", bufferSize)
+    }
+  }
+
+  private def loadHiveConfFile(conf: SparkConf, hadoopConf: Configuration): Unit = {
+    val configFile = Utils.getContextOrSparkClassLoader.getResource("hive-site.xml")
+    if (configFile != null) {
+      logInfo(s"Loading hive config file: $configFile")
+      hadoopConf.addResource(configFile)
     }
   }
 
