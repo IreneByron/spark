@@ -60,6 +60,7 @@ private[yarn] class ExecutorRunnable(
 
   def run(): Unit = {
     logDebug("Starting Executor Container")
+    // node manager client
     nmClient = NMClient.createNMClient()
     nmClient.init(conf)
     nmClient.start()
@@ -96,6 +97,7 @@ private[yarn] class ExecutorRunnable(
     credentials.writeTokenStorageToStream(dob)
     ctx.setTokens(ByteBuffer.wrap(dob.getData()))
 
+    // 准备指令
     val commands = prepareCommand()
 
     ctx.setCommands(commands.asJava)
@@ -120,6 +122,7 @@ private[yarn] class ExecutorRunnable(
 
     // Send the start request to the ContainerManager
     try {
+      // 指定NM启动容器
       nmClient.startContainer(container.get, ctx)
     } catch {
       case ex: Exception =>

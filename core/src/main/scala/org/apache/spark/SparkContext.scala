@@ -227,6 +227,7 @@ class SparkContext(config: SparkConf) extends Logging {
   private var _hadoopConfiguration: Configuration = _
   // _executorMemory：Executor的内存大小
   private var _executorMemory: Int = _
+  // 通信后台
   private var _schedulerBackend: SchedulerBackend = _
   private var _taskScheduler: TaskScheduler = _
   private var _heartbeatReceiver: RpcEndpointRef = _
@@ -686,6 +687,7 @@ class SparkContext(config: SparkConf) extends Logging {
     postApplicationStart()
 
     // Post init
+    // 准备工作已经准备好
     _taskScheduler.postStartHook()
     if (isLocal) {
       _env.metricsSystem.registerSource(Executor.executorSourceLocalModeOnly)

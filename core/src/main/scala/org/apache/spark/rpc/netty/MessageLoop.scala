@@ -162,6 +162,7 @@ private class DedicatedMessageLoop(
     dispatcher: Dispatcher)
   extends MessageLoop(dispatcher) {
 
+  // 线程池
   private val inbox = new Inbox(name, endpoint)
 
   override protected val threadpool = if (endpoint.threadCount() > 1) {

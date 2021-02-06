@@ -468,6 +468,7 @@ private[spark] class ApplicationMaster(
       dummyRunner.launchContextDebugInfo()
     }
 
+    // 分配器
     allocator = client.createAllocator(
       yarnConf,
       _sparkConf,
@@ -482,6 +483,7 @@ private[spark] class ApplicationMaster(
     // the allocator is ready to service requests.
     rpcEnv.setupEndpoint("YarnAM", new AMEndpoint(rpcEnv, driverRef))
 
+    // 可分配资源
     allocator.allocateResources()
     val ms = MetricsSystem.createMetricsSystem(MetricsSystemInstances.APPLICATION_MASTER,
       sparkConf, securityMgr)
@@ -495,7 +497,7 @@ private[spark] class ApplicationMaster(
 
   private def runDriver(): Unit = {
     addAmIpFilter(None, System.getenv(ApplicationConstants.APPLICATION_WEB_PROXY_BASE_ENV))
-    // 启动用户应用程序
+    // 启动用户应用程序——线程
     userClassThread = startUserApplication()
 
     // This a bit hacky, but we need to wait until the spark.driver.port property has
@@ -504,25 +506,30 @@ private[spark] class ApplicationMaster(
     val totalWaitTime = sparkConf.get(AM_MAX_WAIT_TIME)
     try {
       // 线程阻塞，等待结果 等上下文环境对象
+      // postStartHook 执行完 ApplicationMaster.sparkContextInitialized(sc)，就等到了结果
       val sc = ThreadUtils.awaitResult(sparkContextPromise.future,
         Duration(totalWaitTime, TimeUnit.MILLISECONDS))
       if (sc != null) {
+        // 通信环境
         val rpcEnv = sc.env.rpcEnv
 
         val userConf = sc.getConf
         val host = userConf.get(DRIVER_HOST_ADDRESS)
         val port = userConf.get(DRIVER_PORT)
+        // 注册AM，申请资源
         registerAM(host, port, userConf, sc.ui.map(_.webUrl), appAttemptId)
 
         val driverRef = rpcEnv.setupEndpointRef(
           RpcAddress(host, port),
           YarnSchedulerBackend.ENDPOINT_NAME)
+        // 创建分配器
         createAllocator(driverRef, userConf, rpcEnv, appAttemptId, distCacheConf)
       } else {
         // Sanity check; should never happen in normal operation, since sc should only be null
         // if the user app did not create a SparkContext.
         throw new IllegalStateException("User did not initialize spark context!")
       }
+      // 让driver继续执行
       resumeDriver()
       userClassThread.join()
     } catch {

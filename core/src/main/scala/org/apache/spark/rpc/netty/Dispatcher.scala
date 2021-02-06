@@ -53,7 +53,9 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) exte
   private var stopped = false
 
   def registerRpcEndpoint(name: String, endpoint: RpcEndpoint): NettyRpcEndpointRef = {
+    // 通信地址
     val addr = RpcEndpointAddress(nettyEnv.address, name)
+    // 通信引用
     val endpointRef = new NettyRpcEndpointRef(nettyEnv.conf, addr, nettyEnv)
     synchronized {
       if (stopped) {
@@ -68,6 +70,7 @@ private[netty] class Dispatcher(nettyEnv: NettyRpcEnv, numUsableCores: Int) exte
       // called.
       endpointRefs.put(endpoint, endpointRef)
 
+      // 消息循环器
       var messageLoop: MessageLoop = null
       try {
         messageLoop = endpoint match {

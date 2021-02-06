@@ -1089,6 +1089,7 @@ private[spark] class TaskSchedulerImpl(
     if (backend.isReady) {
       return
     }
+    // 状态等待，等待程序继续往下走
     while (!backend.isReady) {
       // Might take a while for backend to be ready if it is waiting on resources.
       if (sc.stopped.get) {

@@ -392,9 +392,11 @@ private[yarn] class YarnAllocator(
     // requests.
     val allocateResponse = amClient.allocate(progressIndicator)
 
+    // 可分配容器
     val allocatedContainers = allocateResponse.getAllocatedContainers()
     allocatorNodeHealthTracker.setNumClusterNodes(allocateResponse.getNumClusterNodes)
 
+    // 如果有可分配的容器
     if (allocatedContainers.size > 0) {
       logDebug(("Allocated containers: %d. Current executor count: %d. " +
         "Launching executor count: %d. Cluster resources: %s.")
@@ -404,6 +406,7 @@ private[yarn] class YarnAllocator(
           getNumExecutorsStarting,
           allocateResponse.getAvailableResources))
 
+      // 处理可用于分配的容器
       handleAllocatedContainers(allocatedContainers.asScala.toSeq)
     }
 
@@ -569,6 +572,7 @@ private[yarn] class YarnAllocator(
   def handleAllocatedContainers(allocatedContainers: Seq[Container]): Unit = {
     val containersToUse = new ArrayBuffer[Container](allocatedContainers.size)
 
+    // 根据主机等信息对容器分类
     // Match incoming requests by host
     val remainingAfterHostMatches = new ArrayBuffer[Container]
     for (allocatedContainer <- allocatedContainers) {
@@ -627,6 +631,7 @@ private[yarn] class YarnAllocator(
       }
     }
 
+    // 运行已分配容器
     runAllocatedContainers(containersToUse)
 
     logInfo("Received %d containers from YARN, launching executors on %d of them."
@@ -675,6 +680,7 @@ private[yarn] class YarnAllocator(
    * Launches executors in the allocated containers.
    */
   private def runAllocatedContainers(containersToUse: ArrayBuffer[Container]): Unit = synchronized {
+    // 遍历可以使用的容器
     for (container <- containersToUse) {
       val rpId = getResourceProfileIdFromPriority(container.getPriority)
       executorIdCounter += 1
@@ -705,11 +711,15 @@ private[yarn] class YarnAllocator(
         map(_.amount).getOrElse(defaultResources.executorMemoryMiB).toInt
       val containerCores = rp.getExecutorCores.getOrElse(defaultResources.cores)
       val rpRunningExecs = getOrUpdateRunningExecutorForRPId(rpId).size
+      // 正在运行的executors 和 需要的executors 大小对比
       if (rpRunningExecs < getOrUpdateTargetNumExecutorsForRPId(rpId)) {
         getOrUpdateNumExecutorsStartingForRPId(rpId).incrementAndGet()
+        // 如果小于，启动containers
         if (launchContainers) {
+          // launcherPool线程池
           launcherPool.execute(() => {
             try {
+              // 启动executor
               new ExecutorRunnable(
                 Some(container),
                 conf,

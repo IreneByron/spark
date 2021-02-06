@@ -35,7 +35,7 @@ private[spark] trait RpcEnvFactory {
  *
  * The life-cycle of an endpoint is:
  *
- * {@code constructor -> onStart -> receive* -> onStop}
+ * {@code constructor -> onStart -> receive* -> onStop}  通信生命周期
  *
  * Note: `receive` can be called concurrently. If you want `receive` to be thread-safe, please use
  * [[ThreadSafeRpcEndpoint]]
