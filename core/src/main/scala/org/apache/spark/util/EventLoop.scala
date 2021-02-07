@@ -101,7 +101,9 @@ private[spark] abstract class EventLoop[E](name: String) extends Logging {
    */
   def post(event: E): Unit = {
     if (!stopped.get) {
+      // 事件线程
       if (eventThread.isAlive) {
+        // 事件队列
         eventQueue.put(event)
       } else {
         onError(new IllegalStateException(s"$name has already been stopped accidentally."))

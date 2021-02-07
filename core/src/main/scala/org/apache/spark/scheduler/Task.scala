@@ -128,6 +128,7 @@ private[spark] abstract class Task[T](
     plugins.foreach(_.onTaskStart())
 
     try {
+      // 运行任务
       runTask(context)
     } catch {
       case e: Throwable =>

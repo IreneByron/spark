@@ -98,7 +98,7 @@ import org.apache.spark.util.random.{BernoulliCellSampler, BernoulliSampler, Poi
  */
 abstract class RDD[T: ClassTag](
     @transient private var _sc: SparkContext, // _sc由@transient修饰，所以此属性不会被序列化。
-    @transient private var deps: Seq[Dependency[_]]
+    @transient private var deps: Seq[Dependency[_]] // 依赖关系
     // deps: 构造器参数之一，是Dependency的序列，用于存储当前RDD的依赖。
     // RDD的子类在实现时不一定会传递此参数。由于deps由@transient修饰，所以此属性不会被序列化。
   ) extends Serializable with Logging {
@@ -125,7 +125,7 @@ abstract class RDD[T: ClassTag](
   }
 
   /** Construct an RDD with just a one-to-one dependency on one parent
-   * 构造仅与一对父对象一对一依赖的RDD
+   * 构造仅与一对父对象一对一依赖的RDD OneToOneDependency
    * */
   def this(@transient oneParent: RDD[_]) =
     this(oneParent.context, List(new OneToOneDependency(oneParent)))

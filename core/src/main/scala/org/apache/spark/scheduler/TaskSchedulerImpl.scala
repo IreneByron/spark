@@ -164,7 +164,7 @@ private[spark] class TaskSchedulerImpl(
   val mapOutputTracker = SparkEnv.get.mapOutputTracker.asInstanceOf[MapOutputTrackerMaster]
 
   private var schedulableBuilder: SchedulableBuilder = null
-  // default scheduler is FIFO
+  // default scheduler is FIFO 默认调度模式是FIFO
   private val schedulingModeConf = conf.get(SCHEDULER_MODE)
   val schedulingMode: SchedulingMode =
     try {
@@ -200,11 +200,14 @@ private[spark] class TaskSchedulerImpl(
 
   def initialize(backend: SchedulerBackend): Unit = {
     this.backend = backend
+    // 根据不同模式形成不同调度器
     schedulableBuilder = {
       schedulingMode match {
         case SchedulingMode.FIFO =>
+          // 先进先出
           new FIFOSchedulableBuilder(rootPool)
         case SchedulingMode.FAIR =>
+          // 公平
           new FairSchedulableBuilder(rootPool, conf)
         case _ =>
           throw new IllegalArgumentException(s"Unsupported $SCHEDULER_MODE_PROPERTY: " +
@@ -236,6 +239,7 @@ private[spark] class TaskSchedulerImpl(
     logInfo("Adding task set " + taskSet.id + " with " + tasks.length + " tasks "
       + "resource profile " + taskSet.resourceProfileId)
     this.synchronized {
+      // 创建任务集管理器
       val manager = createTaskSetManager(taskSet, maxTaskFailures)
       val stage = taskSet.stageId
       val stageTaskSets =
@@ -254,6 +258,7 @@ private[spark] class TaskSchedulerImpl(
         ts.isZombie = true
       }
       stageTaskSets(taskSet.stageAttemptId) = manager
+      // 调度构建器
       schedulableBuilder.addTaskSetManager(manager, manager.taskSet.properties)
 
       if (!isLocal && !hasReceivedTask) {
@@ -271,6 +276,7 @@ private[spark] class TaskSchedulerImpl(
       }
       hasReceivedTask = true
     }
+    // 从任务池中取任务
     backend.reviveOffers()
   }
 
@@ -488,6 +494,8 @@ private[spark] class TaskSchedulerImpl(
    * Called by cluster manager to offer resources on workers. We respond by asking our active task
    * sets for tasks in order of priority. We fill each node with tasks in a round-robin manner so
    * that tasks are balanced across the cluster.
+   * 优先级
+   * 轮询
    */
   def resourceOffers(
       offers: IndexedSeq[WorkerOffer],
@@ -532,6 +540,7 @@ private[spark] class TaskSchedulerImpl(
     val availableResources = shuffledOffers.map(_.resources).toArray
     val availableCpus = shuffledOffers.map(o => o.cores).toArray
     val resourceProfileIds = shuffledOffers.map(o => o.resourceProfileId).toArray
+    // 拿到排过序的任务集
     val sortedTaskSets = rootPool.getSortedTaskSetQueue
     for (taskSet <- sortedTaskSets) {
       logDebug("parentName: %s, name: %s, runningTasks: %s".format(
@@ -573,6 +582,7 @@ private[spark] class TaskSchedulerImpl(
         var globalMinLocality: Option[TaskLocality] = None
         // Record all the executor IDs assigned barrier tasks on.
         val addressesWithDescs = ArrayBuffer[(String, TaskDescription)]()
+        // 本地化级别：计算和数据的位置存在不同的级别，这个级别称之为本地化级别
         for (currentMaxLocality <- taskSet.myLocalityLevels) {
           var launchedTaskAtCurrentMaxLocality = false
           do {

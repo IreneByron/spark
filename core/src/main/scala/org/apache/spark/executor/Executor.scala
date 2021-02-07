@@ -267,6 +267,7 @@ private[spark] class Executor(
   def launchTask(context: ExecutorBackend, taskDescription: TaskDescription): Unit = {
     val tr = new TaskRunner(context, taskDescription, plugins)
     runningTasks.put(taskDescription.taskId, tr)
+    // 线程池
     threadPool.execute(tr)
     if (decommissioned) {
       log.error(s"Launching a task while in decommissioned state.")

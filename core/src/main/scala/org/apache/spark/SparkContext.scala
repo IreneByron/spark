@@ -212,13 +212,14 @@ class SparkContext(config: SparkConf) extends Logging {
   // 它们是可变的，因为我们希望提前将它们初始化为某个中性值，
   // 因此在构造函数仍在运行时调用“ stop（）”是安全的。
 
-  // _conf: spark 配置
+  // _conf: spark 配置 基础环境配置
   private var _conf: SparkConf = _
   // _eventLogDir: 事件日志路径
   private var _eventLogDir: Option[URI] = None
   // _eventLogCodec 事件日志的压缩算法
   private var _eventLogCodec: Option[String] = None
   private var _listenerBus: LiveListenerBus = _
+  // 环境对象 通信环境
   private var _env: SparkEnv = _
   private var _statusTracker: SparkStatusTracker = _
   private var _progressBar: Option[ConsoleProgressBar] = None
@@ -227,10 +228,12 @@ class SparkContext(config: SparkConf) extends Logging {
   private var _hadoopConfiguration: Configuration = _
   // _executorMemory：Executor的内存大小
   private var _executorMemory: Int = _
-  // 通信后台
+  // 通信后台 主要用于和Executor之间进行通信
   private var _schedulerBackend: SchedulerBackend = _
+  // 任务调度器 主要用于任务的调度
   private var _taskScheduler: TaskScheduler = _
   private var _heartbeatReceiver: RpcEndpointRef = _
+  // 阶段调度器 主要用于阶段的划分和任务的切分
   @volatile private var _dagScheduler: DAGScheduler = _
   // _applicationId：当前应用的标识
   private var _applicationId: String = _
@@ -300,6 +303,7 @@ class SparkContext(config: SparkConf) extends Logging {
       conf: SparkConf,
       isLocal: Boolean,
       listenerBus: LiveListenerBus): SparkEnv = {
+    // driver 的环境
     SparkEnv.createDriverEnv(conf, isLocal, listenerBus, SparkContext.numDriverCores(master, conf))
   }
 

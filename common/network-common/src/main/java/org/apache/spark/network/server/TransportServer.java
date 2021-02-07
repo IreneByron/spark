@@ -81,6 +81,7 @@ public class TransportServer implements Closeable {
 
     boolean shouldClose = true;
     try {
+      // 服务器初始化
       init(hostToBind, portToBind);
       shouldClose = false;
     } finally {
@@ -99,6 +100,7 @@ public class TransportServer implements Closeable {
 
   private void init(String hostToBind, int portToBind) {
 
+    // io模式
     IOMode ioMode = IOMode.valueOf(conf.ioMode());
     EventLoopGroup bossGroup = NettyUtils.createEventLoop(ioMode, 1,
       conf.getModuleName() + "-boss");

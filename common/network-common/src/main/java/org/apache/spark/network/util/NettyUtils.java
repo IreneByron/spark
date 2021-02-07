@@ -89,6 +89,7 @@ public class NettyUtils {
       case NIO:
         return NioServerSocketChannel.class;
       case EPOLL:
+        // 采用EPOLL模仿AIO
         return EpollServerSocketChannel.class;
       default:
         throw new IllegalArgumentException("Unknown io mode: " + mode);

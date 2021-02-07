@@ -139,6 +139,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
       }, 0, reviveIntervalMs, TimeUnit.MILLISECONDS)
     }
 
+    // 收到消息
     override def receive: PartialFunction[Any, Unit] = {
       case StatusUpdate(executorId, taskId, state, data, resources) =>
         scheduler.statusUpdate(taskId, state, data.value)
@@ -329,6 +330,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Make fake resource offers on just one executor
     private def makeOffers(executorId: String): Unit = {
       // Make sure no executor is killed while some task is launching on it
+      // 得到任务描述信息
       val taskDescs = withLock {
         // Filter out executors under killing
         if (isExecutorActive(executorId)) {
@@ -344,6 +346,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           Seq.empty
         }
       }
+      // 如果任务不为空，启动任务
       if (taskDescs.nonEmpty) {
         launchTasks(taskDescs)
       }
@@ -352,7 +355,8 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
     // Launch tasks returned by a set of resource offers
     private def launchTasks(tasks: Seq[Seq[TaskDescription]]): Unit = {
       for (task <- tasks.flatten) {
-        val serializedTask = TaskDescription.encode(task)
+        val serializedTask = TaskDescription.encode(task
+          // 序列化任务数量是否超过限制
         if (serializedTask.limit() >= maxRpcMessageSize) {
           Option(scheduler.taskIdToTaskSetManager.get(task.taskId)).foreach { taskSetMgr =>
             try {
@@ -382,6 +386,7 @@ class CoarseGrainedSchedulerBackend(scheduler: TaskSchedulerImpl, val rpcEnv: Rp
           logDebug(s"Launching task ${task.taskId} on executor id: ${task.executorId} hostname: " +
             s"${executorData.executorHost}.")
 
+          // 给对应executor的终端发消息，启动task（序列化后）
           executorData.executorEndpoint.send(LaunchTask(new SerializableBuffer(serializedTask)))
         }
       }

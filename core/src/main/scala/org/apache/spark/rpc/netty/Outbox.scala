@@ -100,6 +100,7 @@ private[netty] class Outbox(nettyEnv: NettyRpcEnv, val address: RpcAddress) {
   private val messages = new java.util.LinkedList[OutboxMessage]
 
   @GuardedBy("this")
+  // 客户端
   private var client: TransportClient = null
 
   /**

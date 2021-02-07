@@ -26,6 +26,7 @@ import org.apache.spark.util.RpcUtils
 
 /**
  * A reference for a remote [[RpcEndpoint]]. [[RpcEndpointRef]] is thread-safe.
+ * 引用
  */
 private[spark] abstract class RpcEndpointRef(conf: SparkConf)
   extends Serializable with Logging {
@@ -62,6 +63,7 @@ private[spark] abstract class RpcEndpointRef(conf: SparkConf)
    * receive the reply within the specified timeout.
    *
    * This method only sends the message once and never retries.
+   * 发送
    */
   def ask[T: ClassTag](message: Any, timeout: RpcTimeout): Future[T]
 

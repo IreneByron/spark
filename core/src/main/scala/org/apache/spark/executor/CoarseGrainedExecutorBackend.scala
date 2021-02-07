@@ -155,6 +155,7 @@ private[spark] class CoarseGrainedExecutorBackend(
       .map(e => (e._1.substring(prefix.length).toUpperCase(Locale.ROOT), e._2)).toMap
   }
 
+  // 收到消息
   override def receive: PartialFunction[Any, Unit] = {
     case RegisteredExecutor => // 注册成功
       logInfo("Successfully registered with driver")
@@ -168,13 +169,17 @@ private[spark] class CoarseGrainedExecutorBackend(
           exitExecutor(1, "Unable to create executor due to " + e.getMessage, e)
       }
 
+      // 启动任务
     case LaunchTask(data) =>
       if (executor == null) {
+        // 计算对象为null，错误
         exitExecutor(1, "Received LaunchTask command but executor was null")
       } else {
+        // 反序列化
         val taskDesc = TaskDescription.decode(data.value)
         logInfo("Got assigned task " + taskDesc.taskId)
         taskResources(taskDesc.taskId) = taskDesc.resources
+        // 计算对象启动task
         executor.launchTask(this, taskDesc)
       }
 
@@ -444,7 +449,7 @@ private[spark] object CoarseGrainedExecutorBackend extends Logging {
       }
 
       driverConf.set(EXECUTOR_ID, arguments.executorId)
-      // 创建运行时环境
+      // 创建运行时环境 executor env
       val env = SparkEnv.createExecutorEnv(driverConf, arguments.executorId, arguments.bindAddress,
         arguments.hostname, arguments.cores, cfg.ioEncryptionKey, isLocal = false)
 

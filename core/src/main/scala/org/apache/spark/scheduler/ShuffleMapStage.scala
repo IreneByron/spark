@@ -92,6 +92,6 @@ private[spark] class ShuffleMapStage(
   override def findMissingPartitions(): Seq[Int] = {
     mapOutputTrackerMaster
       .findMissingPartitions(shuffleDep.shuffleId)
-      .getOrElse(0 until numPartitions)
+      .getOrElse(0 until numPartitions) // 假设5个分区，0 until 5 就是0,1,2,3,4
   }
 }

@@ -102,6 +102,7 @@ private[netty] class NettyRpcEnv(
   /**
    * A map for [[RpcAddress]] and [[Outbox]]. When we are connecting to a remote [[RpcAddress]],
    * we just put messages to its [[Outbox]] to implement a non-blocking `send` method.
+   * 发件箱  根据地址会有多个
    */
   private val outboxes = new ConcurrentHashMap[RpcAddress, Outbox]()
 
@@ -122,7 +123,10 @@ private[netty] class NettyRpcEnv(
       } else {
         java.util.Collections.emptyList()
       }
+
+    // 创建服务
     server = transportContext.createServer(bindAddress, port, bootstraps)
+    // 注册通信终端
     dispatcher.registerRpcEndpoint(
       RpcEndpointVerifier.NAME, new RpcEndpointVerifier(this, dispatcher))
   }
@@ -498,6 +502,7 @@ private[rpc] class NettyRpcEnvFactory extends RpcEnvFactory with Logging {
         (nettyEnv, nettyEnv.address.port)
       }
       try {
+        // 在一个端口启动服务
         Utils.startServiceOnPort(config.port, startNettyRpcEnv, sparkConf, config.name)._1
       } catch {
         case NonFatal(e) =>

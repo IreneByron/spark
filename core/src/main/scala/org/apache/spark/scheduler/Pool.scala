@@ -47,6 +47,7 @@ private[spark] class Pool(
   val name = poolName
   var parent: Pool = null
 
+  // 调度算法
   private val taskSetSchedulingAlgorithm: SchedulingAlgorithm = {
     schedulingMode match {
       case SchedulingMode.FAIR =>
