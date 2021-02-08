@@ -96,6 +96,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       shuffleId: Int,
       dependency: ShuffleDependency[K, V, C]): ShuffleHandle = {
     if (SortShuffleWriter.shouldBypassMergeSort(conf, dependency)) {
+      // shouldBypassMergeSort 是否能忽略归并排序，当忽略时，就走bypass
       // If there are fewer than spark.shuffle.sort.bypassMergeThreshold partitions and we don't
       // need map-side aggregation, then write numPartitions files directly and just concatenate
       // them at the end. This avoids doing serialization and deserialization twice to merge
@@ -104,6 +105,7 @@ private[spark] class SortShuffleManager(conf: SparkConf) extends ShuffleManager 
       new BypassMergeSortShuffleHandle[K, V](
         shuffleId, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
     } else if (SortShuffleManager.canUseSerializedShuffle(dependency)) {
+      // 能使用序列化shuffle
       // Otherwise, try to buffer map outputs in a serialized form, since this is more efficient:
       new SerializedShuffleHandle[K, V](
         shuffleId, dependency.asInstanceOf[ShuffleDependency[K, V, V]])
@@ -220,11 +222,15 @@ private[spark] object SortShuffleManager extends Logging {
   def canUseSerializedShuffle(dependency: ShuffleDependency[_, _, _]): Boolean = {
     val shufId = dependency.shuffleId
     val numPartitions = dependency.partitioner.numPartitions
+    // 当前的序列化规则中是否支持序列化的重定位
+    // 分开的序列化重定位，关联到一起，高效使用内存
+    // 默认Java不支持，kryo支持
     if (!dependency.serializer.supportsRelocationOfSerializedObjects) {
       log.debug(s"Can't use serialized shuffle for shuffle $shufId because the serializer, " +
         s"${dependency.serializer.getClass.getName}, does not support object relocation")
       false
     } else if (dependency.mapSideCombine) {
+      // 支持预聚合，不能用
       log.debug(s"Can't use serialized shuffle for shuffle $shufId because we need to do " +
         s"map-side aggregation")
       false
