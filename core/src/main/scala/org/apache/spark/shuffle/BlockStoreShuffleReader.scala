@@ -73,6 +73,7 @@ private[spark] class BlockStoreShuffleReader[K, C](
       blocksByAddress,
       serializerManager.wrapStream,
       // Note: we use getSizeAsMb when no suffix is provided for backwards compatibility
+      // 读磁盘缓冲区 48M
       SparkEnv.get.conf.get(config.REDUCER_MAX_SIZE_IN_FLIGHT) * 1024 * 1024,
       SparkEnv.get.conf.get(config.REDUCER_MAX_REQS_IN_FLIGHT),
       SparkEnv.get.conf.get(config.REDUCER_MAX_BLOCKS_IN_FLIGHT_PER_ADDRESS),

@@ -143,6 +143,7 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
             blockManager.diskBlockManager().createTempShuffleBlock();
         final File file = tempShuffleBlockIdPlusFile._2();
         final BlockId blockId = tempShuffleBlockIdPlusFile._1();
+        // 每一个分区会创建一个partitionWriters，每个分区创建一个文件
         partitionWriters[i] =
             blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, writeMetrics);
       }
@@ -218,6 +219,7 @@ final class BypassMergeSortShuffleWriter<K, V> extends ShuffleWriter<K, V> {
       }
       partitionWriters = null;
     }
+    // 最后还是合并成dataFile和indexFile
     return mapOutputWriter.commitAllPartitions().getPartitionLengths();
   }
 

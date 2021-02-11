@@ -179,6 +179,7 @@ private[spark] class ExternalSorter[K, V, C](
 
   def insertAll(records: Iterator[Product2[K, V]]): Unit = {
     // TODO: stop combining if we find that the reduction factor isn't high
+    // 如果有aggregator，说明支持预聚合
     val shouldCombine = aggregator.isDefined
 
     if (shouldCombine) {
@@ -186,13 +187,16 @@ private[spark] class ExternalSorter[K, V, C](
       val mergeValue = aggregator.get.mergeValue
       val createCombiner = aggregator.get.createCombiner
       var kv: Product2[K, V] = null
+      // 这里就在预聚合
       val update = (hadValue: Boolean, oldValue: C) => {
         if (hadValue) mergeValue(oldValue, kv._2) else createCombiner(kv._2)
       }
       while (records.hasNext) {
         addElementsRead()
         kv = records.next()
+        // 预聚合改变值
         map.changeValue((getPartition(kv._1), kv._1), update)
+        // 内存不够时，溢写磁盘
         maybeSpillCollection(usingMap = true)
       }
     } else {
@@ -214,7 +218,9 @@ private[spark] class ExternalSorter[K, V, C](
   private def maybeSpillCollection(usingMap: Boolean): Unit = {
     var estimatedSize = 0L
     if (usingMap) {
+      // 预估大小
       estimatedSize = map.estimateSize()
+      // 判断是否溢写
       if (maybeSpill(map, estimatedSize)) {
         map = new PartitionedAppendOnlyMap[K, C]
       }
@@ -238,6 +244,7 @@ private[spark] class ExternalSorter[K, V, C](
    */
   override protected[this] def spill(collection: WritablePartitionedPairCollection[K, C]): Unit = {
     val inMemoryIterator = collection.destructiveSortedWritablePartitionedIterator(comparator)
+    // 内存溢写到磁盘
     val spillFile = spillMemoryIteratorToDisk(inMemoryIterator)
     spills += spillFile
   }
@@ -268,11 +275,13 @@ private[spark] class ExternalSorter[K, V, C](
     // Because these files may be read during shuffle, their compression must be controlled by
     // spark.shuffle.compress instead of spark.shuffle.spill.compress, so we need to use
     // createTempShuffleBlock here; see SPARK-3426 for more context.
+    // 创建临时文件
     val (blockId, file) = diskBlockManager.createTempShuffleBlock()
 
     // These variables are reset after each flush
     var objectsWritten: Long = 0
     val spillMetrics: ShuffleWriteMetrics = new ShuffleWriteMetrics
+    // fileBufferSize缓冲区大小，默认32K
     val writer: DiskBlockObjectWriter =
       blockManager.getDiskWriter(blockId, file, serInstance, fileBufferSize, spillMetrics)
 
@@ -353,6 +362,7 @@ private[spark] class ExternalSorter[K, V, C](
       } else if (ordering.isDefined) {
         // No aggregator given, but we have an ordering (e.g. used by reduce tasks in sortByKey);
         // sort the elements without trying to merge them
+        // 归并排序
         (p, mergeSort(iterators, ordering.get))
       } else {
         (p, iterators.iterator.flatten)
@@ -368,6 +378,7 @@ private[spark] class ExternalSorter[K, V, C](
     val bufferedIters = iterators.filter(_.hasNext).map(_.buffered)
     type Iter = BufferedIterator[Product2[K, C]]
     // Use the reverse order (compare(y,x)) because PriorityQueue dequeues the max
+    // 优先级队列  堆排序
     val heap = new mutable.PriorityQueue[Iter]()(
       (x: Iter, y: Iter) => comparator.compare(y.head._1, x.head._1))
     heap.enqueue(bufferedIters: _*)  // Will contain only the iterators with hasNext = true
@@ -659,6 +670,7 @@ private[spark] class ExternalSorter[K, V, C](
       }
     } else {
       // Merge spilled and in-memory data
+      // 有溢写的话，合并磁盘和内存中的数据
       merge(spills.toSeq, destructiveIterator(
         collection.partitionedDestructiveSortedIterator(comparator)))
     }
@@ -731,6 +743,7 @@ private[spark] class ExternalSorter[K, V, C](
       mapOutputWriter: ShuffleMapOutputWriter): Unit = {
     var nextPartitionId = 0
     if (spills.isEmpty) {
+      // 没有溢写
       // Case where we only have in-memory data
       val collection = if (aggregator.isDefined) map else buffer
       val it = collection.destructiveSortedWritablePartitionedIterator(comparator)
@@ -758,9 +771,11 @@ private[spark] class ExternalSorter[K, V, C](
         nextPartitionId = partitionId + 1
       }
     } else {
+      // 有溢写
       // We must perform merge-sort; get an iterator by partition and write everything directly.
       for ((id, elements) <- this.partitionedIterator) {
         val blockId = ShuffleBlockId(shuffleId, mapId, id)
+        // writer写磁盘文件
         var partitionWriter: ShufflePartitionWriter = null
         var partitionPairsWriter: ShufflePartitionPairsWriter = null
         TryUtils.tryWithSafeFinally {
