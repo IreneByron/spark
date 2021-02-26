@@ -453,8 +453,8 @@ private[spark] object SparkHadoopUtil extends Logging {
         }
       }
 
-      loadHiveConfFile(conf, hadoopConf)
       // 将SparkConf中所有的以spark.hadoop.开头的属性都赋值到Hadoop的Configuration
+      appendHiveConfigs(hadoopConf)
       appendSparkHadoopConfigs(conf, hadoopConf)
       appendSparkHiveConfigs(conf, hadoopConf)
       // 将SparkConf的属性spark.buffer.size复制到Hadoop的Configuration的配置io.file.buffer.size
@@ -463,11 +463,20 @@ private[spark] object SparkHadoopUtil extends Logging {
     }
   }
 
-  private def loadHiveConfFile(conf: SparkConf, hadoopConf: Configuration): Unit = {
+  private lazy val hiveConfKeys = {
     val configFile = Utils.getContextOrSparkClassLoader.getResource("hive-site.xml")
     if (configFile != null) {
-      logInfo(s"Loading hive config file: $configFile")
-      hadoopConf.addResource(configFile)
+      val conf = new Configuration(false)
+      conf.addResource(configFile)
+      conf.iterator().asScala.toSeq
+    } else {
+      Nil
+    }
+  }
+
+  private def appendHiveConfigs(hadoopConf: Configuration): Unit = {
+    hiveConfKeys.foreach { kv =>
+      hadoopConf.set(kv.getKey, kv.getValue)
     }
   }
 

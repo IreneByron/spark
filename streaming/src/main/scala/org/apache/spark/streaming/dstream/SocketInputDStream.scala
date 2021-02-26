@@ -39,6 +39,7 @@ class SocketInputDStream[T: ClassTag](
     storageLevel: StorageLevel
   ) extends ReceiverInputDStream[T](_ssc) {
 
+  // 获取采集器
   def getReceiver(): Receiver[T] = {
     new SocketReceiver(host, port, bytesToObjects, storageLevel)
   }
@@ -58,6 +59,7 @@ class SocketReceiver[T: ClassTag](
 
     logInfo(s"Connecting to $host:$port")
     try {
+      // 连接主机和端口
       socket = new Socket(host, port)
     } catch {
       case e: ConnectException =>
@@ -87,6 +89,7 @@ class SocketReceiver[T: ClassTag](
   /** Create a socket connection and receive data until receiver is stopped */
   def receive(): Unit = {
     try {
+      // 从socket获取输出流，得到数据
       val iterator = bytesToObjects(socket.getInputStream())
       while(!isStopped && iterator.hasNext) {
         store(iterator.next())
