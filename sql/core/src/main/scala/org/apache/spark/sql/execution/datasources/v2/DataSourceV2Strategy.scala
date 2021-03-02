@@ -270,11 +270,11 @@ class DataSourceV2Strategy(session: SparkSession) extends Strategy with Predicat
     case desc @ DescribeNamespace(ResolvedNamespace(catalog, ns), extended) =>
       DescribeNamespaceExec(desc.output, catalog.asNamespaceCatalog, ns, extended) :: Nil
 
-    case desc @ DescribeRelation(r: ResolvedTable, partitionSpec, isExtended) =>
+    case DescribeRelation(r: ResolvedTable, partitionSpec, isExtended, output) =>
       if (partitionSpec.nonEmpty) {
         throw new AnalysisException("DESCRIBE does not support partition for v2 tables.")
       }
-      DescribeTableExec(desc.output, r.table, isExtended) :: Nil
+      DescribeTableExec(output, r.table, isExtended) :: Nil
 
     case desc @ DescribeColumn(_: ResolvedTable, column, isExtended) =>
       column match {
@@ -337,9 +337,6 @@ class DataSourceV2Strategy(session: SparkSession) extends Strategy with Predicat
     case ShowTables(ResolvedNamespace(catalog, ns), pattern, output) =>
       ShowTablesExec(output, catalog.asTableCatalog, ns, pattern) :: Nil
 
-    case _: ShowTableExtended =>
-      throw new AnalysisException("SHOW TABLE EXTENDED is not supported for v2 tables.")
-
     case SetCatalogAndNamespace(catalogManager, catalogName, ns) =>
       SetCatalogAndNamespaceExec(catalogManager, catalogName, ns) :: Nil
 
@@ -394,10 +391,15 @@ class DataSourceV2Strategy(session: SparkSession) extends Strategy with Predicat
     case ShowCreateTable(_: ResolvedTable, _) =>
       throw new AnalysisException("SHOW CREATE TABLE is not supported for v2 tables.")
 
-    case TruncateTable(r: ResolvedTable, parts) =>
+    case TruncateTable(r: ResolvedTable) =>
       TruncateTableExec(
-        r.table,
-        parts.toSeq.asResolvedPartitionSpecs.headOption,
+        r.table.asTruncatable,
+        recacheTable(r)) :: Nil
+
+    case TruncatePartition(r: ResolvedTable, part) =>
+      TruncatePartitionExec(
+        r.table.asPartitionable,
+        Seq(part).asResolvedPartitionSpecs.head,
         recacheTable(r)) :: Nil
 
     case ShowColumns(_: ResolvedTable, _, _) =>

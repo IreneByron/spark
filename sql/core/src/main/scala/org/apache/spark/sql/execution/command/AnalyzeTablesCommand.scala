@@ -15,23 +15,32 @@
  * limitations under the License.
  */
 
-package org.apache.spark.sql.execution.datasources.v2
+package org.apache.spark.sql.execution.command
 
-import org.apache.spark.sql.catalyst.InternalRow
-import org.apache.spark.sql.catalyst.expressions.Attribute
-import org.apache.spark.sql.connector.catalog.TruncatableTable
+import scala.util.control.NonFatal
+
+import org.apache.spark.sql.{Row, SparkSession}
+
 
 /**
- * Physical plan node for table truncation.
+ * Analyzes all tables in the given database to generate statistics.
  */
-case class TruncateTableExec(
-    table: TruncatableTable,
-    refreshCache: () => Unit) extends V2CommandExec {
+case class AnalyzeTablesCommand(
+    databaseName: Option[String],
+    noScan: Boolean) extends RunnableCommand {
 
-  override def output: Seq[Attribute] = Seq.empty
-
-  override protected def run(): Seq[InternalRow] = {
-    if (table.truncateTable()) refreshCache()
-    Seq.empty
+  override def run(sparkSession: SparkSession): Seq[Row] = {
+    val catalog = sparkSession.sessionState.catalog
+    val db = databaseName.getOrElse(catalog.getCurrentDatabase)
+    catalog.listTables(db).foreach { tbl =>
+      try {
+        CommandUtils.analyzeTable(sparkSession, tbl, noScan)
+      } catch {
+        case NonFatal(e) =>
+          logWarning(s"Failed to analyze table ${tbl.table} in the " +
+            s"database $db because of ${e.toString}", e)
+      }
+    }
+    Seq.empty[Row]
   }
 }
