@@ -45,6 +45,7 @@ public abstract class BufferedRowIterator {
     return !currentRows.isEmpty();
   }
 
+  // 返回下一条row
   public InternalRow next() {
     return currentRows.remove();
   }

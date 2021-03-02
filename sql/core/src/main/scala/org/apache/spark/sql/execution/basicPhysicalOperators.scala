@@ -173,8 +173,10 @@ trait GeneratePredicateHelper extends PredicateHelper {
       val nullChecks = c.references.map { r =>
         val idx = notNullPreds.indexWhere { n => n.asInstanceOf[IsNotNull].child.semanticEquals(r)}
         if (idx != -1 && !generatedIsNotNullChecks(idx)) {
+          // 专门记录是否执行了nullcheck，布尔数组
           generatedIsNotNullChecks(idx) = true
           // Use the child's output. The nullability is what the child produced.
+          // 生成过滤表达式代码
           genPredicate(notNullPreds(idx), inputExprCode, inputAttrs)
         } else if (nonNullAttrExprIds.contains(r.exprId) && !extraIsNotNullAttrs.contains(r)) {
           extraIsNotNullAttrs += r
@@ -212,6 +214,7 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   extends UnaryExecNode with CodegenSupport with GeneratePredicateHelper {
 
   // Split out all the IsNotNulls from condition.
+  // 将过滤谓词氛围 notNullPreds和otherPreds
   private val (notNullPreds, otherPreds) = splitConjunctivePredicates(condition).partition {
     case IsNotNull(a) => isNullIntolerant(a) && a.references.subsetOf(child.outputSet)
     case _ => false
@@ -240,11 +243,13 @@ case class FilterExec(condition: Expression, child: SparkPlan)
   override def doConsume(ctx: CodegenContext, input: Seq[ExprCode], row: ExprCode): String = {
     val numOutput = metricTerm(ctx, "numOutputRows")
 
+    // 实际过滤条件 代码生成
     val predicateCode = generatePredicateCode(
       ctx, child.output, input, output, notNullPreds, otherPreds, notNullAttributes)
 
     // Reset the isNull to false for the not-null columns, then the followed operators could
     // generate better code (remove dead branches).
+    // null检测
     val resultVars = input.zipWithIndex.map { case (ev, i) =>
       if (notNullAttributes.contains(child.output(i).exprId)) {
         ev.isNull = FalseLiteral

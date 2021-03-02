@@ -42,10 +42,13 @@ import org.apache.spark.util.Utils
 
 /**
  * An interface for those physical operators that support codegen.
+ * 支持codegen operator的接口
  */
 trait CodegenSupport extends SparkPlan {
 
-  /** Prefix used in the current operator's variable names. */
+  /** Prefix used in the current operator's variable names.
+   * 对应的物理算子节点生成的代码中变量名的前缀
+   * */
   private def variablePrefix: String = this match {
     case _: HashAggregateExec => "agg"
     case _: BroadcastHashJoinExec => "bhj"
@@ -55,11 +58,12 @@ trait CodegenSupport extends SparkPlan {
     case _: DataSourceScanExec => "scan"
     case _: InMemoryTableScanExec => "memoryScan"
     case _: WholeStageCodegenExec => "wholestagecodegen"
-    case _ => nodeName.toLowerCase(Locale.ROOT)
+    case _ => nodeName.toLowerCase(Locale.ROOT) // 默认为小写nodeName
   }
 
   /**
    * Creates a metric using the specified name.
+   * 使用特定名字创建metric
    *
    * @return name of the variable representing the metric
    */
@@ -69,6 +73,7 @@ trait CodegenSupport extends SparkPlan {
 
   /**
    * Whether this SparkPlan supports whole stage codegen or not.
+   * 是否支持全阶段codegen
    */
   def supportCodegen: Boolean = true
 
@@ -86,10 +91,15 @@ trait CodegenSupport extends SparkPlan {
 
   /**
    * Returns Java source code to process the rows from input RDD.
+   * 输出java代码 运行从输入RDD来的rows
+   * final 不可重写
    */
   final def produce(ctx: CodegenContext, parent: CodegenSupport): String = executeQuery {
+    // 把传入的CodegenSupport作为parent
     this.parent = parent
+    // 设置CodegenContext的变量前缀
     ctx.freshNamePrefix = variablePrefix
+    // 添加注释 调用doProduce
     s"""
        |${ctx.registerComment(s"PRODUCE: ${this.simpleString(SQLConf.get.maxToStringFields)}")}
        |${doProduce(ctx)}
@@ -101,26 +111,28 @@ trait CodegenSupport extends SparkPlan {
    *
    * doProduce() usually generate the framework, for example, aggregation could generate this:
    *
-   *   if (!initialized) {
-   *     # create a hash map, then build the aggregation hash map
-   *     # call child.produce()
-   *     initialized = true;
-   *   }
-   *   while (hashmap.hasNext()) {
-   *     row = hashmap.next();
-   *     # build the aggregation results
-   *     # create variables for results
-   *     # call consume(), which will call parent.doConsume()
-   *      if (shouldStop()) return;
-   *   }
+   * if (!initialized) {
+   * # create a hash map, then build the aggregation hash map
+   * # call child.produce()
+   * initialized = true;
+   * }
+   * while (hashmap.hasNext()) {
+   * row = hashmap.next();
+   * # build the aggregation results
+   * # create variables for results
+   * # call consume(), which will call parent.doConsume()
+   * if (shouldStop()) return;
+   * }
    */
   protected def doProduce(ctx: CodegenContext): String
 
   private def prepareRowVar(ctx: CodegenContext, row: String, colVars: Seq[ExprCode]): ExprCode = {
     if (row != null) {
+      // 该行变量的ExprCode对象
       ExprCode.forNonNullValue(JavaCode.variable(row, classOf[UnsafeRow]))
     } else {
       if (colVars.nonEmpty) {
+        // 行变量为空，但是列变量不为空
         val colExprs = output.zipWithIndex.map { case (attr, i) =>
           BoundReference(i, attr.dataType, attr.nullable)
         }
@@ -128,14 +140,17 @@ trait CodegenSupport extends SparkPlan {
         // generate the code to create a UnsafeRow
         ctx.INPUT_ROW = row
         ctx.currentVars = colVars
+        // 生成代码
         val ev = GenerateUnsafeProjection.createCode(ctx, colExprs, false)
-        val code = code"""
-          |$evaluateInputs
-          |${ev.code}
+        val code =
+          code"""
+                |$evaluateInputs
+                |${ev.code}
          """.stripMargin
         ExprCode(code, FalseLiteral, ev.value)
       } else {
         // There are no columns
+        // 构造名为unsafeRow的ExprCode对象
         ExprCode.forNonNullValue(JavaCode.variable("unsafeRow", classOf[UnsafeRow]))
       }
     }
@@ -143,6 +158,9 @@ trait CodegenSupport extends SparkPlan {
 
   /**
    * Consume the generated columns or row from current SparkPlan, call its parent's `doConsume()`.
+   * 消费从本节点产生的columns or row
+   * final 不可重写
+   * 整合当前节点的处理逻辑，构造(ctx,inputVars, rowVar)三元组并提交到下一个处理逻辑
    *
    * Note that `outputVars` and `row` can't both be null.
    */
@@ -161,12 +179,12 @@ trait CodegenSupport extends SparkPlan {
         }
       }
 
-    val inputVars = inputVarsCandidate match {
+    val inputVars: Seq[ExprCode] = inputVarsCandidate match {
       case stream: Stream[ExprCode] => stream.force
       case other => other
     }
 
-    val rowVar = prepareRowVar(ctx, row, outputVars)
+    val rowVar: ExprCode = prepareRowVar(ctx, row, outputVars)
 
     // Set up the `currentVars` in the codegen context, as we generate the code of `inputVars`
     // before calling `parent.doConsume`. We can't set up `INPUT_ROW`, because parent needs to
@@ -188,9 +206,10 @@ trait CodegenSupport extends SparkPlan {
     val requireAllOutput = output.forall(parent.usedInputs.contains(_))
     val paramLength = CodeGenerator.calculateParamLength(output) + (if (row != null) 1 else 0)
     val consumeFunc = if (confEnabled && requireAllOutput
-        && CodeGenerator.isValidParamLength(paramLength)) {
+      && CodeGenerator.isValidParamLength(paramLength)) {
       constructDoConsumeFunction(ctx, inputVars, row)
     } else {
+      // 传给父节点
       parent.doConsume(ctx, inputVars, rowVar)
     }
     s"""
@@ -205,9 +224,9 @@ trait CodegenSupport extends SparkPlan {
    * parent's `doConsume` codes of a `CodegenSupport` operator into a function to call.
    */
   private def constructDoConsumeFunction(
-      ctx: CodegenContext,
-      inputVars: Seq[ExprCode],
-      row: String): String = {
+                                          ctx: CodegenContext,
+                                          inputVars: Seq[ExprCode],
+                                          row: String): String = {
     val (args, params, inputVarsInFunc) = constructConsumeParameters(ctx, output, inputVars, row)
     val rowVar = prepareRowVar(ctx, row, inputVarsInFunc)
 
@@ -232,10 +251,10 @@ trait CodegenSupport extends SparkPlan {
    * And also returns the list of `ExprCode` for the parameters.
    */
   private def constructConsumeParameters(
-      ctx: CodegenContext,
-      attributes: Seq[Attribute],
-      variables: Seq[ExprCode],
-      row: String): (Seq[String], Seq[String], Seq[ExprCode]) = {
+                                          ctx: CodegenContext,
+                                          attributes: Seq[Attribute],
+                                          variables: Seq[ExprCode],
+                                          row: String): (Seq[String], Seq[String], Seq[ExprCode]) = {
     val arguments = mutable.ArrayBuffer[String]()
     val parameters = mutable.ArrayBuffer[String]()
     val paramVars = mutable.ArrayBuffer[ExprCode]()
@@ -281,9 +300,9 @@ trait CodegenSupport extends SparkPlan {
    * of evaluated variables, to prevent them to be evaluated twice.
    */
   protected def evaluateRequiredVariables(
-      attributes: Seq[Attribute],
-      variables: Seq[ExprCode],
-      required: AttributeSet): String = {
+                                           attributes: Seq[Attribute],
+                                           variables: Seq[ExprCode],
+                                           required: AttributeSet): String = {
     val evaluateVars = new StringBuilder
     variables.zipWithIndex.foreach { case (ev, i) =>
       if (ev.code.nonEmpty && required.contains(attributes(i))) {
@@ -299,9 +318,9 @@ trait CodegenSupport extends SparkPlan {
    * code of evaluated variables, to prevent them to be evaluated twice.
    */
   protected def evaluateNondeterministicVariables(
-      attributes: Seq[Attribute],
-      variables: Seq[ExprCode],
-      expressions: Seq[NamedExpression]): String = {
+                                                   attributes: Seq[Attribute],
+                                                   variables: Seq[ExprCode],
+                                                   expressions: Seq[NamedExpression]): String = {
     val nondeterministicAttrs = expressions.filterNot(_.deterministic).map(_.toAttribute)
     evaluateRequiredVariables(attributes, variables, AttributeSet(nondeterministicAttrs))
   }
@@ -321,20 +340,20 @@ trait CodegenSupport extends SparkPlan {
    * This should be override by subclass to support codegen.
    *
    * Note: The operator should not assume the existence of an outer processing loop,
-   *       which it can jump from with "continue;"!
+   * which it can jump from with "continue;"!
    *
    * For example, filter could generate this:
-   *   # code to evaluate the predicate expression, result is isNull1 and value2
-   *   if (!isNull1 && value2) {
-   *     # call consume(), which will call parent.doConsume()
-   *   }
+   * # code to evaluate the predicate expression, result is isNull1 and value2
+   * if (!isNull1 && value2) {
+   * # call consume(), which will call parent.doConsume()
+   * }
    *
    * Note: A plan can either consume the rows as UnsafeRow (row), or a list of variables (input).
-   *       When consuming as a listing of variables, the code to produce the input is already
-   *       generated and `CodegenContext.currentVars` is already set. When consuming as UnsafeRow,
-   *       implementations need to put `row.code` in the generated code and set
-   *       `CodegenContext.INPUT_ROW` manually. Some plans may need more tweaks as they have
-   *       different inputs(join build side, aggregate buffer, etc.), or other special cases.
+   * When consuming as a listing of variables, the code to produce the input is already
+   * generated and `CodegenContext.currentVars` is already set. When consuming as UnsafeRow,
+   * implementations need to put `row.code` in the generated code and set
+   * `CodegenContext.INPUT_ROW` manually. Some plans may need more tweaks as they have
+   * different inputs(join build side, aggregate buffer, etc.), or other special cases.
    */
   def doConsume(ctx: CodegenContext, input: Seq[ExprCode], row: ExprCode): String = {
     throw new UnsupportedOperationException
@@ -455,6 +474,7 @@ trait InputRDDCodegen extends CodegenSupport {
 
   override def doProduce(ctx: CodegenContext): String = {
     // Inline mutable state since an InputRDDCodegen is used once in a task for WholeStageCodegen
+    // 在上下文中增加input迭代器对象，添加初始化赋值语句
     val input = ctx.addMutableState("scala.collection.Iterator", "input", v => s"$v = inputs[0];",
       forceInline = true)
     val row = ctx.freshName("row")
@@ -476,6 +496,8 @@ trait InputRDDCodegen extends CodegenSupport {
     } else {
       ""
     }
+    // 调用next 获取输入行
+    // 调用consume，进行处理
     s"""
        | while ($limitNotReachedCond $input.hasNext()) {
        |   InternalRow $row = (InternalRow) $input.next();
@@ -492,6 +514,7 @@ trait InputRDDCodegen extends CodegenSupport {
  *
  * This is the leaf node of a tree with WholeStageCodegen that is used to generate code
  * that consumes an RDD iterator of InternalRow.
+ * 生成代码 -> 消费InternalRow的RDD迭代器
  */
 case class InputAdapter(child: SparkPlan) extends UnaryExecNode with InputRDDCodegen {
 
@@ -531,15 +554,15 @@ case class InputAdapter(child: SparkPlan) extends UnaryExecNode with InputRDDCod
   protected val createUnsafeProjection: Boolean = false
 
   override def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      append: String => Unit,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false,
-      maxFields: Int,
-      printNodeId: Boolean,
-      indent: Int = 0): Unit = {
+                                   depth: Int,
+                                   lastChildren: Seq[Boolean],
+                                   append: String => Unit,
+                                   verbose: Boolean,
+                                   prefix: String = "",
+                                   addSuffix: Boolean = false,
+                                   maxFields: Int,
+                                   printNodeId: Boolean,
+                                   indent: Int = 0): Unit = {
     child.generateTreeString(
       depth,
       lastChildren,
@@ -597,22 +620,22 @@ object WholeStageCodegenExec {
  *
  * Here is the call graph of to generate Java source (plan A supports codegen, but plan B does not):
  *
- *   WholeStageCodegen       Plan A               FakeInput        Plan B
+ * WholeStageCodegen       Plan A               FakeInput        Plan B
  * =========================================================================
  *
  * -> execute()
- *     |
- *  doExecute() --------->   inputRDDs() -------> inputRDDs() ------> execute()
- *     |
- *     +----------------->   produce()
- *                             |
- *                          doProduce()  -------> produce()
- *                                                   |
- *                                                doProduce()
- *                                                   |
- *                         doConsume() <--------- consume()
- *                             |
- *  doConsume()  <--------  consume()
+ * |
+ * doExecute() --------->   inputRDDs() -------> inputRDDs() ------> execute()
+ * |
+ * +----------------->   produce()
+ * |
+ * doProduce()  -------> produce()
+ * |
+ * doProduce()
+ * |
+ * doConsume() <--------- consume()
+ * |
+ * doConsume()  <--------  consume()
  *
  * SparkPlan A should override `doProduce()` and `doConsume()`.
  *
@@ -620,7 +643,7 @@ object WholeStageCodegenExec {
  * used to generated code for [[BoundReference]].
  */
 case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
-    extends UnaryExecNode with CodegenSupport {
+  extends UnaryExecNode with CodegenSupport {
 
   override def output: Seq[Attribute] = child.output
 
@@ -646,15 +669,19 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
 
   /**
    * Generates code for this subtree.
+   * 对子树进行代码生成
    *
    * @return the tuple of the codegen context and the actual generated source.
    */
   def doCodeGen(): (CodegenContext, CodeAndComment) = {
     val startTime = System.nanoTime()
+    // 创建代码生成上下文
     val ctx = new CodegenContext
+    // 调用子节点produce,code类型String
     val code = child.asInstanceOf[CodegenSupport].produce(ctx, this)
 
     // main next function.
+    // processNext函数，内容code
     ctx.addNewFunction("processNext",
       s"""
         protected void processNext() throws java.io.IOException {
@@ -664,15 +691,19 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
 
     val className = generatedClassName()
 
-    val source = s"""
+    // 构造java源代码字符串
+    val source =
+      s"""
       public Object generate(Object[] references) {
         return new $className(references);
       }
 
-      ${ctx.registerComment(
-        s"""Codegened pipeline for stage (id=$codegenStageId)
-           |${this.treeString.trim}""".stripMargin,
-         "wsc_codegenPipeline")}
+      ${
+        ctx.registerComment(
+          s"""Codegened pipeline for stage (id=$codegenStageId)
+             |${this.treeString.trim}""".stripMargin,
+          "wsc_codegenPipeline")
+      }
       ${ctx.registerComment(s"codegenStageId=$codegenStageId", "wsc_codegenStageId", true)}
       final class $className extends ${classOf[BufferedRowIterator].getName} {
 
@@ -715,11 +746,14 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
   }
 
   override def doExecute(): RDD[InternalRow] = {
+    // 子树代码生成
     val (ctx, cleanedSource) = doCodeGen()
     // try to compile and fallback if it failed
     val (_, compiledCodeStats) = try {
+      // 编译
       CodeGenerator.compile(cleanedSource)
     } catch {
+      // 失败回退  参数 spark.sql.codegen.wholeStage 默认为 true
       case NonFatal(_) if !Utils.isTesting && sqlContext.conf.codegenFallback =>
         // We should already saw the error message
         logWarning(s"Whole-stage codegen disabled for plan (id=$codegenStageId):\n $treeString")
@@ -727,6 +761,7 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
     }
 
     // Check if compiled code has a too large function
+    // 检查最大method code size 是否大于spark.sql.codegen.hugeMethodLimit，默认65535 byte
     if (compiledCodeStats.maxMethodCodeSize > sqlContext.conf.hugeMethodLimit) {
       logInfo(s"Found too long generated codes and JIT optimization might not work: " +
         s"the bytecode size (${compiledCodeStats.maxMethodCodeSize}) is above the limit " +
@@ -743,10 +778,13 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
     // Even though rdds is an RDD[InternalRow] it may actually be an RDD[ColumnarBatch] with
     // type erasure hiding that. This allows for the input to a code gen stage to be columnar,
     // but the output must be rows.
+    // 调用子节点的inputRDDs，获取整个WholeStageCodegenExec子树的inputRDDs
     val rdds = child.asInstanceOf[CodegenSupport].inputRDDs()
     assert(rdds.size <= 2, "Up to two input RDDs can be supported")
     if (rdds.length == 1) {
       rdds.head.mapPartitionsWithIndex { (index, iter) =>
+        // 在每个分区上编译生成代码，获得生成的对象clazz
+        // 调用generate方法得到BufferedRowIterator（此对象就是WholeStageCodegenExec子树中所有子节点生成的综合代码）
         val (clazz, _) = CodeGenerator.compile(cleanedSource)
         val buffer = clazz.generate(references).asInstanceOf[BufferedRowIterator]
         buffer.init(index, Array(iter))
@@ -756,6 +794,7 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
             if (!v) durationMs += buffer.durationMs()
             v
           }
+
           override def next: InternalRow = buffer.next()
         }
       }
@@ -775,12 +814,14 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
             if (!v) durationMs += buffer.durationMs()
             v
           }
+
           override def next: InternalRow = buffer.next()
         }
       }
     }
   }
 
+  // 不能调用
   override def inputRDDs(): Seq[RDD[InternalRow]] = {
     throw new UnsupportedOperationException
   }
@@ -796,21 +837,21 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
       ""
     }
     s"""
-      |${row.code}
-      |append(${row.value}$doCopy);
+       |${row.code}
+       |append(${row.value}$doCopy);
      """.stripMargin.trim
   }
 
   override def generateTreeString(
-      depth: Int,
-      lastChildren: Seq[Boolean],
-      append: String => Unit,
-      verbose: Boolean,
-      prefix: String = "",
-      addSuffix: Boolean = false,
-      maxFields: Int,
-      printNodeId: Boolean,
-      indent: Int = 0): Unit = {
+                                   depth: Int,
+                                   lastChildren: Seq[Boolean],
+                                   append: String => Unit,
+                                   verbose: Boolean,
+                                   prefix: String = "",
+                                   addSuffix: Boolean = false,
+                                   maxFields: Int,
+                                   printNodeId: Boolean,
+                                   indent: Int = 0): Unit = {
     child.generateTreeString(
       depth,
       lastChildren,
@@ -849,10 +890,10 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
  * :        +- *(1) Filter isnotnull((id#0L % 2))
  * :           +- *(1) Range (0, 5, step=1, splits=8)
  * +- *(4) Sort [y#9L ASC NULLS FIRST], false, 0
- *    +- Exchange hashpartitioning(y#9L, 200)
- *       +- *(3) Project [(id#6L % 2) AS y#9L]
- *          +- *(3) Filter isnotnull((id#6L % 2))
- *             +- *(3) Range (0, 5, step=1, splits=8)
+ * +- Exchange hashpartitioning(y#9L, 200)
+ * +- *(3) Project [(id#6L % 2) AS y#9L]
+ * +- *(3) Filter isnotnull((id#6L % 2))
+ * +- *(3) Range (0, 5, step=1, splits=8)
  *
  * where the ID makes it obvious that not all adjacent codegen'd plan operators are of the
  * same codegen stage.
@@ -872,7 +913,7 @@ case class WholeStageCodegenExec(child: SparkPlan)(val codegenStageId: Int)
  * failed to generate/compile code.
  */
 case class CollapseCodegenStages(
-    codegenStageCounter: AtomicInteger = new AtomicInteger(0))
+                                  codegenStageCounter: AtomicInteger = new AtomicInteger(0))
   extends Rule[SparkPlan] {
 
   private def supportCodegen(e: Expression): Boolean = e match {

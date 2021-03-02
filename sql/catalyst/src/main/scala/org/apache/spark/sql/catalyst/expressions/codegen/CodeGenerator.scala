@@ -117,6 +117,7 @@ private[codegen] case class NewFunctionSpec(
 /**
  * A context for codegen, tracking a list of objects that could be passed into generated Java
  * function.
+ * codegen上下文环境，跟踪可以传递到生成Java函数的一系列objects
  */
 class CodegenContext extends Logging {
 
@@ -519,6 +520,7 @@ class CodegenContext extends Logging {
   /**
    * Declares all function code. If the added functions are too many, split them into nested
    * sub-classes to avoid hitting Java compiler constant pool limitation.
+   * 声明 CodegenContext 中定义的相关函数
    */
   def declareAddedFunctions(): String = {
     val inlinedFunctions = classFunctions(outerClassName).values
